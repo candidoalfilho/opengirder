@@ -204,6 +204,22 @@ export interface CombinationResult {
   reactions: { node: number; elu: { min: Reaction['R']; max: Reaction['R'] }; elsRare: { min: Reaction['R']; max: Reaction['R'] } }[]
 }
 
+/** protensão numa barra, vista pelas verificações de seção (3 estações) */
+export interface PrestressAtFrame {
+  /** área de aço de protensão (m²) */
+  Ap: [number, number, number]
+  /** excentricidade do cabo resultante em relação ao centroide (m); + = abaixo do centroide */
+  e: [number, number, number]
+  /** força de protensão após todas as perdas (kN) */
+  P: [number, number, number]
+}
+
+/** resultados da protensão do tabuleiro (os demais campos são do módulo prestress/) */
+export interface PrestressResult {
+  /** na ordem de `deadLoad.frames`; null = barra sem cabo */
+  atFrames: (PrestressAtFrame | null)[]
+}
+
 export interface BridgeResults {
   nNodes: number
   nElements: number
@@ -216,6 +232,8 @@ export interface BridgeResults {
   cases?: LoadCaseResult[]
   /** combinações NBR 8681 e envoltórias */
   combos?: CombinationResult
+  /** protensão do tabuleiro (caso 'P' em `cases`) */
+  prestress?: PrestressResult
   checks: { cables: CableCheck[] }
   /** L0 finais por cabo (aplicar no modelo p/ reaproveitar o form-finding); com `sizeCables`,
    *  traz também a área e o nº de cordoalhas redimensionados */
