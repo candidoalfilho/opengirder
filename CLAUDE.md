@@ -21,6 +21,13 @@ npm run sweep -w @opengirder/engine      # 20 variações de gabarito — rodar 
 
 Pipeline de `analyzeBridge`: form-finding → carga permanente não linear → modal → carga móvel → verificações. Com `sizeCables`, repete até o número de cordoalhas estabilizar.
 
+## Como estender
+
+- **Caso de carga novo** (temperatura, vento, protensão…): montar um `CaseLoad` e resolver com `ctx.lin.solve()` (`analysis/linear.ts`) — incrementos linearizados sobre a tangente do estado permanente. Empurrar um `LoadCaseResult` em `ctx.cases` no marcador `[ext:casos]` de `analyze.ts`.
+- **Pós-processamento novo** (verificação, estabilidade, fases): função `runX(ctx)` chamada no marcador `[ext:verificacoes]`, escrevendo um campo opcional novo em `BridgeResults`. Envolver em `guard('Nome', () => …)` para uma falha virar aviso, não erro.
+- **Aba nova no painel direito**: componente em `apps/desktop/src/panels/features/` + uma entrada em `panels/registry.tsx`.
+- **Editar dados de entrada pela interface**: `useStore.getState().updateModel(fn)` (descarta resultados). **Mostrar um campo de deslocamentos no 3D**: `showOverlay({ label, u, animate, hideElements })`.
+
 ## Convenções
 
 - Interface e comentários em pt-BR; decimais com vírgula na tela.

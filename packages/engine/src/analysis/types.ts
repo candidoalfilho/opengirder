@@ -137,6 +137,73 @@ export interface CableCheck {
   ok: boolean
 }
 
+/* ------------------------------------------------------------------ ações e combinações */
+
+export type ActionKind = 'temperature' | 'wind' | 'braking' | 'seismic' | 'prestress' | 'settlement' | 'other'
+
+/**
+ * Resultado de um caso de carga linearizado em torno do estado permanente (incrementos).
+ * `frames`/`cables` seguem a ordem de `deadLoad.frames`/`deadLoad.cables`.
+ */
+export interface LoadCaseResult {
+  /** identificador curto e único: 'TU+', 'TG+', 'W', 'FR', 'E', 'P'… */
+  id: string
+  name: string
+  kind: ActionKind
+  /** 'both' = sentido indefinido (vento, sismo, frenagem): entra nas combinações como ± */
+  sign: 'fixed' | 'both'
+  u: number[]
+  frames: FrameForces[]
+  cables: { id: number; dT: number }[]
+  reactions: Reaction[]
+  /** grandezas que caracterizam a ação (pressão de vento, força de frenagem…) p/ o memorial */
+  info?: { label: string; value: number; unit: string }[]
+}
+
+/** envoltória [mín, máx] de cada esforço nas 3 estações */
+export interface EnvForces {
+  N: Env3
+  Vy: Env3
+  Vz: Env3
+  T: Env3
+  My: Env3
+  Mz: Env3
+}
+
+export type LimitState = 'ELU' | 'ELU-EXC' | 'ELS-R' | 'ELS-F' | 'ELS-QP'
+
+export interface CombinationDef {
+  id: string
+  name: string
+  limit: LimitState
+  /** fator por ação: 'G' (permanente), 'Q' (carga móvel) e os `id` dos casos (`LoadCaseResult.id`) */
+  factors: Record<string, number>
+}
+
+/**
+ * Combinações NBR 8681. As envoltórias são por esforço (não concomitantes), exceto
+ * `NatMz`: força normal concomitante com o Mz mínimo e com o Mz máximo do ELU.
+ */
+export interface CombinationResult {
+  list: CombinationDef[]
+  /** na ordem de `deadLoad.frames` */
+  frames: {
+    id: number
+    elu: EnvForces
+    elsRare: EnvForces
+    elsFreq: EnvForces
+    elsQp: EnvForces
+    /** N concomitante no ELU: com o Mz mínimo e com o Mz máximo, nas 3 estações */
+    NatMz: { min: [number, number, number]; max: [number, number, number] }
+  }[]
+  /** tração total [mín, máx] por cabo, na ordem de `deadLoad.cables` */
+  cables: { id: number; elu: [number, number]; elsRare: [number, number]; elsFreq: [number, number]; elsQp: [number, number] }[]
+  /** flecha vertical por nó (m) nas combinações frequentes, só ações variáveis: [mín, máx] */
+  uzFreq: { min: number[]; max: number[] }
+  /** reações de apoio [mín, máx] no ELU e na combinação rara */
+  reactions: { node: number; elu: { min: Reaction['R']; max: Reaction['R'] }; elsRare: { min: Reaction['R']; max: Reaction['R'] } }[]
+}
+
 export interface BridgeResults {
   nNodes: number
   nElements: number
@@ -145,6 +212,10 @@ export interface BridgeResults {
   deadLoad: StaticState
   modal?: ModalResult
   moving?: MovingLoadResult
+  /** casos de carga adicionais (temperatura, vento, frenagem, sismo, protensão…) */
+  cases?: LoadCaseResult[]
+  /** combinações NBR 8681 e envoltórias */
+  combos?: CombinationResult
   checks: { cables: CableCheck[] }
   /** L0 finais por cabo (aplicar no modelo p/ reaproveitar o form-finding); com `sizeCables`,
    *  traz também a área e o nº de cordoalhas redimensionados */
@@ -163,6 +234,8 @@ export interface AnalysisOptions {
   sizeCables?: boolean
   modal?: { modes: number } | false
   moving?: { vehicle: 'TB-450' | 'TB-240'; lanes?: string[] } | false
+  /** false = pula as extensões (casos adicionais, combinações, verificações…); uso interno */
+  extras?: boolean
   /** callback de progresso (só no mesmo thread) */
   onProgress?: (stage: string, fraction: number) => void
 }

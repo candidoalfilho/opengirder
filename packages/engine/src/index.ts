@@ -16,6 +16,8 @@ export { validateModel } from './model/validate'
 export { generateModel, defaultTemplate, PRESETS } from './templates'
 export { analyzeBridge, applyCableL0 } from './analyze'
 export { frameAxes, cablePolyline } from './analysis/geometry'
+export { LinearSolver, type CaseLoad, type ImposedStrain, type LinearState } from './analysis/linear'
+export type { AnalysisContext } from './analysis/context'
 export {
   civ,
   cnf,

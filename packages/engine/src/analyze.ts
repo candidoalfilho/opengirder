@@ -22,6 +22,8 @@ import { equivalentNodalLoads, stationForces } from './analysis/frame'
 import { solveModal } from './analysis/modal'
 import { findForm } from './formfinding/formFinding'
 import { solveMovingLoad } from './loads/moving'
+import { LinearSolver } from './analysis/linear'
+import type { AnalysisContext } from './analysis/context'
 
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now())
 
@@ -196,9 +198,8 @@ function runAnalysis(model: BridgeModel, opts: AnalysisOptions): BridgeResults {
     }
   })
   lap('verificacoes')
-  progress('Concluído', 1)
 
-  return {
+  const res: BridgeResults = {
     nNodes: sys.nNodes,
     nElements: sys.frames.length + sys.cables.length,
     nDofs: sys.nEq,
@@ -211,6 +212,33 @@ function runAnalysis(model: BridgeModel, opts: AnalysisOptions): BridgeResults {
     warnings,
     timings,
   }
+
+  // ---- extensões: rodam só no passe final (não nos passes de dimensionamento dos estais)
+  if (opts.extras !== false && sys.nEq > 0) {
+    const ctx: AnalysisContext = {
+      model, opts, sys, sol, nonlinear,
+      lin: new LinearSolver(sys, sol.K, nonlinear),
+      res, cases: [], warnings, progress, lap,
+    }
+    const guard = (what: string, fn: () => void): void => {
+      try {
+        fn()
+      } catch (e) {
+        warnings.push(`${what} não realizada: ${(e as Error).message}`)
+      }
+    }
+    void guard
+    void ctx
+    // [ext:casos] casos de carga adicionais — cada módulo acrescenta em ctx.cases
+
+    if (ctx.cases.length > 0) res.cases = ctx.cases
+    // [ext:combinacoes] combinações NBR 8681 — preenche res.combos
+
+    // [ext:verificacoes] verificações, estabilidade, fases e demais pós-processamentos
+
+  }
+  progress('Concluído', 1)
+  return res
 }
 
 /**
@@ -239,8 +267,8 @@ export function analyzeBridge(model: BridgeModel, opts: AnalysisOptions = {}): B
   const sizing = !!opts.sizeCables && opts.moving !== false && model.lanes.length > 0 &&
     model.elements.some((e) => e.kind === 'cable' && e.group === 'stay' && !!e.strands)
   if (!sizing) return runAnalysis(model, opts)
-  // passes de dimensionamento sem análise modal; o último passe roda completo
-  const quick: AnalysisOptions = { ...opts, modal: false }
+  // passes de dimensionamento sem análise modal nem extensões; o último passe roda completo
+  const quick: AnalysisOptions = { ...opts, modal: false, extras: false }
   const total = (r: BridgeResults): number => Object.values(r.timings).reduce((a, b) => a + b, 0)
   let res = runAnalysis(model, quick)
   let spent = 0
@@ -254,8 +282,8 @@ export function analyzeBridge(model: BridgeModel, opts: AnalysisOptions = {}): B
     spent += total(res)
     res = runAnalysis(current, quick)
   }
-  if (opts.modal !== false) {
-    // último passe completo (com modal), partindo do L0 já convergido — sem refazer o form-finding
+  {
+    // último passe completo (modal + extensões), partindo do L0 já convergido — sem refazer o form-finding
     spent += total(res)
     const ff = res.formFinding
     res = runAnalysis(applyCableL0(current, res.cableL0), { ...opts, formFinding: false })

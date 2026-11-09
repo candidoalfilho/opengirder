@@ -65,6 +65,9 @@ export interface Section {
   /** largura da seção (m) — só p/ desenho */
   width?: number
   shape?: 'box' | 'girder' | 'truss' | 'tower' | 'rigid' | 'generic'
+  /** distância do centroide à fibra superior / inferior (m), p/ tensões; padrão depth/2 */
+  yTop?: number
+  yBot?: number
 }
 
 /**
@@ -82,6 +85,8 @@ export interface FrameElement {
   sec: string
   up?: Vec3
   group?: ElementGroup
+  /** ordem de execução (fase construtiva em que o elemento é montado); ausente = desde o início */
+  stage?: number
 }
 
 /**
@@ -104,6 +109,8 @@ export interface CableElement {
   /** nº de cordoalhas (informativo) */
   strands?: number
   group?: ElementGroup
+  /** ordem de execução (fase construtiva em que o cabo é instalado); ausente = desde o início */
+  stage?: number
 }
 
 export type ElementGroup = 'deck' | 'tower' | 'stay' | 'main-cable' | 'hanger' | 'pier' | 'rigid' | 'crossbeam'
@@ -149,7 +156,45 @@ export interface Lane {
   joints?: number[]
 }
 
-export type BridgeType = 'girder' | 'cable-stayed' | 'suspension'
+export type BridgeType = 'girder' | 'cable-stayed' | 'suspension' | 'arch'
+
+/**
+ * Ações ambientais e de utilização do local da obra. Tudo opcional: o que faltar usa os
+ * padrões de `DEFAULT_SITE` (loads/site.ts). `false` desliga a ação.
+ */
+export interface SiteActions {
+  /** temperatura (NBR 6118 11.4.2 / NBR 7187) */
+  temperature?: false | {
+    /** variação uniforme ± (°C) */
+    uniform: number
+    /** gradiente no tabuleiro: face superior − inferior (°C); aplicado nos dois sentidos (+ΔT e −ΔT/2) */
+    gradient: number
+    /** variação diferencial ± dos cabos em relação à estrutura (°C) */
+    cables: number
+  }
+  /** vento NBR 6123 */
+  wind?: false | {
+    /** velocidade básica V0 (m/s) — isopletas */
+    V0: number
+    S1: number
+    /** categoria de rugosidade do terreno */
+    category: 1 | 2 | 3 | 4 | 5
+    S3: number
+  }
+  /** frenagem e aceleração NBR 7188 5.2.1 */
+  braking?: boolean
+  /** sismo NBR 15421 */
+  seismic?: false | {
+    /** aceleração característica horizontal em rocha, fração de g (zona 0: 0,025 … zona 4: 0,15) */
+    ag: number
+    /** classe do terreno */
+    soil: 'A' | 'B' | 'C' | 'D' | 'E'
+    /** coeficiente de modificação de resposta */
+    R: number
+    /** fator de importância */
+    I: number
+  }
+}
 
 export interface BridgeModel {
   schema: 'opengirder/1'
@@ -161,6 +206,8 @@ export interface BridgeModel {
   elements: Element[]
   loadCases: LoadCase[]
   lanes: Lane[]
+  /** ações do local (temperatura, vento, frenagem, sismo) */
+  site?: SiteActions
   /** parâmetros do gerador que criou o modelo (p/ reabrir o assistente) */
   template?: { kind: string; params: unknown }
   /** metadados de projeto */

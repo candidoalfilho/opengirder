@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { BridgeModel, BridgeResults } from '@opengirder/engine'
-import type { Selection, Theme, ViewState } from '../store'
+import type { Overlay, Selection, Theme, ViewState } from '../store'
 import { fmt, fmtAuto, MODE_KIND_LABEL } from '../format'
 import {
   buildDiagram,
@@ -38,6 +38,8 @@ export interface ViewerProps {
   /** comando de câmera vindo da barra: `n` muda a cada clique */
   cameraCmd?: { preset: CameraPreset; n: number }
   showLegend?: boolean
+  /** campo de deslocamentos extra (modo 'custom'): flambagem, caso de carga, fase… */
+  overlay?: Overlay | null
 }
 
 interface Anim {
@@ -58,22 +60,28 @@ const DIAGRAM_LABEL: Record<string, string> = {
 export function Viewer(props: ViewerProps) {
   const { model, results, view, selection, onSelect, fitKey, theme, cameraCmd, showLegend = true } = props
   const pal = PALETTES[theme]
+  const overlay = view.mode === 'custom' ? (props.overlay ?? null) : null
+  const hideIds = overlay?.hideElements
 
-  const idx = useMemo(() => buildIndex(model, results, view.hidden), [model, results, view.hidden])
+  const idx = useMemo(() => buildIndex(model, results, view.hidden, hideIds), [model, results, view.hidden, hideIds])
 
   const deform = useMemo(() => {
-    if (view.mode !== 'deformed' || !results) return null
-    const mx = maxTranslation(results.deadLoad.u, idx.nNodes)
+    const u = overlay ? (overlay.animate ? null : overlay.u) : view.mode === 'deformed' ? results?.deadLoad.u : null
+    if (!u) return null
+    const mx = maxTranslation(u, idx.nNodes)
     const auto = mx.value > 1e-9 ? (0.04 * idx.diag) / mx.value : 1
     const scale = auto * view.scaleMul
-    return { scale, max: mx, pos: displaced(idx, results.deadLoad.u, scale) }
-  }, [view.mode, view.scaleMul, results, idx])
+    return { scale, max: mx, pos: displaced(idx, u, scale) }
+  }, [view.mode, view.scaleMul, results, idx, overlay])
 
   const mode = view.mode === 'mode' ? (results?.modal?.modes[view.modeIndex] ?? null) : null
-  const anim = useMemo<Anim | null>(
-    () => (mode ? { shape: mode.shape, amp: 0.035 * idx.diag * view.scaleMul } : null),
-    [mode, idx.diag, view.scaleMul],
-  )
+  const anim = useMemo<Anim | null>(() => {
+    const shape = mode?.shape ?? (overlay?.animate ? overlay.u : null)
+    if (!shape) return null
+    // formas não normalizadas (overlay): a amplitude de desenho é relativa à maior translação
+    const mx = mode ? 1 : maxTranslation(shape, idx.nNodes).value || 1
+    return { shape, amp: (0.035 * idx.diag * view.scaleMul) / mx }
+  }, [mode, overlay, idx.diag, idx.nNodes, view.scaleMul])
 
   const cscale = useMemo(
     () => (view.mode === 'cables' ? cableScale(idx, results, view.cableBy) : null),
@@ -113,7 +121,7 @@ export function Viewer(props: ViewerProps) {
           onSelect={onSelect}
           showNodes={view.showNodes}
           dimFrames={view.mode === 'cables'}
-          ghost={view.mode === 'deformed' || view.mode === 'mode'}
+          ghost={view.mode === 'deformed' || view.mode === 'mode' || view.mode === 'custom'}
         />
       </Canvas>
       {showLegend && (
@@ -122,6 +130,7 @@ export function Viewer(props: ViewerProps) {
           results={results}
           idx={idx}
           deform={deform ? { scale: deform.scale, max: deform.max.value, node: deform.max.node } : null}
+          overlay={overlay}
           cscale={cscale}
           diagram={diagram}
           pal={pal}
@@ -498,6 +507,7 @@ function Legend({
   results,
   idx,
   deform,
+  overlay,
   cscale,
   diagram,
   pal,
@@ -505,12 +515,34 @@ function Legend({
   view: ViewState
   results: BridgeResults | null
   idx: SceneIndex
+  overlay: Overlay | null
   deform: { scale: number; max: number; node: number } | null
   cscale: CableScale | null
   diagram: DiagramData | null
   pal: Palette
 }) {
   if (view.mode === 'model') return null
+  if (view.mode === 'custom') {
+    if (!overlay) return null
+    const nd = deform && deform.node >= 0 ? idx.model.nodes[deform.node] : null
+    return (
+      <div className="view-legend">
+        <div className="title">{overlay.label}</div>
+        {overlay.note && <div className="line">{overlay.note}</div>}
+        {deform && (
+          <>
+            <div className="line">
+              Deslocamento máximo <b>{fmt(deform.max * 1000, 1)} mm</b>
+              {nd ? <span className="dim">nó {nd.id}</span> : null}
+            </div>
+            <div className="line">
+              Escala de desenho <b>×{fmtAuto(deform.scale)}</b>
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
   if (!results) {
     return (
       <div className="view-legend">

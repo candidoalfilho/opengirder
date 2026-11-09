@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useStore, type RightTab } from '../store'
+import { useStore } from '../store'
 import { Inspector } from './Inspector'
-import { CablesTab, ModesTab, MovingTab, ReactionsTab, SummaryTab } from './tabs'
+import { FEATURE_TABS } from './registry'
 
 const MIN_W = 340
 const MAX_W = 900
@@ -58,16 +58,8 @@ export function RightPanel() {
 
   if (!model) return null
 
-  const fails = results?.checks.cables.filter((c) => !c.ok).length ?? 0
-  const nCables = model.elements.reduce((a, e) => a + (e.kind === 'cable' ? 1 : 0), 0)
-  const tabs: { key: RightTab; label: string; badge?: string; err?: boolean }[] = [
-    { key: 'summary', label: 'Resumo' },
-    { key: 'cables', label: 'Cabos', badge: fails ? String(fails) : nCables ? String(nCables) : undefined, err: fails > 0 },
-    { key: 'modes', label: 'Modos', badge: results?.modal ? String(results.modal.modes.length) : undefined },
-    { key: 'moving', label: 'Carga móvel' },
-    { key: 'reactions', label: 'Reações' },
-  ]
-  const flush = tab === 'cables' || tab === 'modes' || tab === 'reactions'
+  const tabs = FEATURE_TABS.filter((t) => !t.visible || t.visible(model, results))
+  const current = tabs.find((t) => t.key === tab) ?? tabs[0]
 
   return (
     <div className="right-panel" style={{ width }}>
@@ -81,20 +73,17 @@ export function RightPanel() {
       />
       {selection && <Inspector selection={selection} />}
       <div className="tabs">
-        {tabs.map((t) => (
-          <button key={t.key} className={`tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
-            {t.label}
-            {t.badge && <span className={`badge ${t.err ? 'err' : ''}`}>{t.badge}</span>}
-          </button>
-        ))}
+        {tabs.map((t) => {
+          const badge = t.badge?.(model, results)
+          return (
+            <button key={t.key} className={`tab ${current.key === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
+              {t.label}
+              {badge && <span className={`badge ${badge.err ? 'err' : ''}`}>{badge.text}</span>}
+            </button>
+          )
+        })}
       </div>
-      <div className={`tab-body ${flush ? 'flush' : ''}`}>
-        {tab === 'summary' && <SummaryTab model={model} results={results} />}
-        {tab === 'cables' && <CablesTab model={model} results={results} />}
-        {tab === 'modes' && <ModesTab results={results} />}
-        {tab === 'moving' && <MovingTab model={model} results={results} />}
-        {tab === 'reactions' && <ReactionsTab results={results} />}
-      </div>
+      <div className={`tab-body ${current.flush ? 'flush' : ''}`}>{current.render(model, results)}</div>
     </div>
   )
 }

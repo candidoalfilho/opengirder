@@ -12,10 +12,11 @@ import {
 import type { AnalysisMessage, AnalysisRequest } from './workers/analysis.worker'
 
 export type Screen = 'start' | 'wizard' | 'workspace'
-export type ViewMode = 'model' | 'deformed' | 'cables' | 'diagram' | 'mode'
+export type ViewMode = 'model' | 'deformed' | 'cables' | 'diagram' | 'mode' | 'custom'
 export type DiagramKind = 'Mz' | 'Vy' | 'N'
 export type CableColorBy = 'T' | 'els'
-export type RightTab = 'summary' | 'cables' | 'modes' | 'moving' | 'reactions'
+/** chave da aba do painel direito — ver panels/registry.tsx */
+export type RightTab = string
 export type Theme = 'dark' | 'light'
 
 export interface Selection {
@@ -33,6 +34,23 @@ export interface ViewState {
   showNodes: boolean
   /** grupos de elementos ocultos */
   hidden: string[]
+}
+
+/**
+ * Campo de deslocamentos qualquer p/ mostrar no 3D (modo de flambagem, caso de carga,
+ * fase construtiva…). Ativado por `showOverlay`, que põe a vista no modo 'custom'.
+ */
+export interface Overlay {
+  /** título mostrado na legenda */
+  label: string
+  /** deslocamentos (6 por nó, ordem de model.nodes) */
+  u: number[]
+  /** true = anima como um modo de vibração (forma normalizada); false = deformada estática */
+  animate: boolean
+  /** ids de elementos a esconder (ex.: ainda não montados na fase) */
+  hideElements?: number[]
+  /** texto livre na legenda (ex.: "λ = 4,2") */
+  note?: string
 }
 
 export interface UiOptions {
@@ -78,8 +96,13 @@ interface State {
   options: UiOptions
   analysis: AnalysisStatus
   rightTab: RightTab
+  overlay: Overlay | null
   toast: Toast | null
 
+  /** altera o modelo (dados de entrada): marca como modificado e descarta os resultados */
+  updateModel: (fn: (m: BridgeModel) => BridgeModel) => void
+  /** mostra um campo de deslocamentos no 3D (null volta à vista do modelo) */
+  showOverlay: (o: Overlay | null) => void
   setTheme: (t: Theme) => void
   goStart: () => void
   openWizard: (t: TemplateParams) => void
@@ -185,6 +208,7 @@ export const useStore = create<State>((set, get) => {
       view: { ...DEFAULT_VIEW },
       analysis: IDLE,
       rightTab: 'summary',
+      overlay: null,
     }))
   }
 
@@ -203,7 +227,28 @@ export const useStore = create<State>((set, get) => {
     options: { formFinding: true, sizeCables: true, nonlinear: true, modal: true, modes: 12, moving: true, vehicle: 'TB-450' },
     analysis: IDLE,
     rightTab: 'summary',
+    overlay: null,
     toast: null,
+
+    updateModel: (fn) => {
+      const cur = get().model
+      if (!cur) return
+      const model = fn(cur)
+      if (model === cur) return
+      stopWorker()
+      set((s) => ({
+        model,
+        results: null,
+        modelErrors: safeValidate(model),
+        dirty: true,
+        analysis: IDLE,
+        overlay: null,
+        view: { ...s.view, mode: 'model' },
+      }))
+    },
+
+    showOverlay: (o) =>
+      set((s) => ({ overlay: o, view: { ...s.view, mode: o ? 'custom' : s.view.mode === 'custom' ? 'model' : s.view.mode } })),
 
     setTheme: (t) => {
       applyTheme(t)
@@ -250,7 +295,11 @@ export const useStore = create<State>((set, get) => {
 
     select: (sel) => set({ selection: sel }),
 
-    setView: (patch) => set((s) => ({ view: { ...s.view, ...patch } })),
+    setView: (patch) =>
+      set((s) => ({
+        view: { ...s.view, ...patch },
+        overlay: patch.mode && patch.mode !== 'custom' ? null : s.overlay,
+      })),
 
     toggleGroup: (g) =>
       set((s) => {
@@ -306,12 +355,13 @@ export const useStore = create<State>((set, get) => {
         set((s) => ({
           model: next,
           results,
+          overlay: null,
           dirty,
           analysis: { ...IDLE, elapsed: msg.elapsed },
           view: {
             ...s.view,
             modeIndex: Math.min(s.view.modeIndex, Math.max(0, nModes - 1)),
-            mode: s.view.mode === 'mode' && nModes === 0 ? 'model' : s.view.mode,
+            mode: s.view.mode === 'custom' || (s.view.mode === 'mode' && nModes === 0) ? 'model' : s.view.mode,
           },
         }))
       }

@@ -257,7 +257,7 @@ function ViewToolbar() {
   const setView = useStore((s) => s.setView)
   const results = useStore((s) => s.results)
   const modes = results?.modal?.modes ?? []
-  const scalable = view.mode === 'deformed' || view.mode === 'diagram' || view.mode === 'mode'
+  const scalable = view.mode === 'deformed' || view.mode === 'diagram' || view.mode === 'mode' || view.mode === 'custom'
 
   return (
     <div className="view-toolbar">
@@ -399,6 +399,7 @@ export function Workspace() {
   const model = useStore((s) => s.model)
   const results = useStore((s) => s.results)
   const view = useStore((s) => s.view)
+  const overlay = useStore((s) => s.overlay)
   const selection = useStore((s) => s.selection)
   const select = useStore((s) => s.select)
   const fitKey = useStore((s) => s.fitKey)
@@ -424,6 +425,7 @@ export function Workspace() {
             fitKey={fitKey}
             theme={theme}
             cameraCmd={cam}
+            overlay={overlay}
           />
           <ViewToolbar />
           <CameraBar onCamera={(preset) => setCam((c) => ({ preset, n: c.n + 1 }))} />

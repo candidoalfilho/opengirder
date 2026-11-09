@@ -80,7 +80,12 @@ function frameDims(model: BridgeModel, el: FrameElement, secById: Map<string, Br
   return thin && !(sec?.depth && sec?.width) ? { h: Math.min(h, 0.4), w: Math.min(w, 0.4) } : { h, w }
 }
 
-export function buildIndex(model: BridgeModel, results: BridgeResults | null, hidden: string[]): SceneIndex {
+export function buildIndex(
+  model: BridgeModel,
+  results: BridgeResults | null,
+  hidden: string[],
+  hiddenIds?: number[],
+): SceneIndex {
   const n = model.nodes.length
   const nodeIndex = new Map<number, number>()
   let min: Vec3 = [Infinity, Infinity, Infinity]
@@ -110,6 +115,7 @@ export function buildIndex(model: BridgeModel, results: BridgeResults | null, hi
   results?.deadLoad.cables.forEach((c) => sagById.set(c.id, Number.isFinite(c.sag) ? c.sag : 0))
 
   const hiddenSet = new Set(hidden)
+  const hiddenIdSet = new Set(hiddenIds ?? [])
   const groupCount = new Map<string, { count: number; cable: boolean }>()
   const frames: FrameItem[] = []
   const cables: CableItem[] = []
@@ -123,7 +129,7 @@ export function buildIndex(model: BridgeModel, results: BridgeResults | null, hi
     const g = groupCount.get(group) ?? { count: 0, cable: el.kind === 'cable' }
     g.count++
     groupCount.set(group, g)
-    if (hiddenSet.has(group)) continue
+    if (hiddenSet.has(group) || hiddenIdSet.has(el.id)) continue
     if (el.kind === 'frame') {
       const { h, w } = frameDims(model, el, secById)
       frames.push({ el, i1, i2, h, w, group, matKind: matById.get(el.mat)?.kind ?? 'steel' })
