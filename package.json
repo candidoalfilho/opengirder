@@ -1,0 +1,19 @@
+{
+  "name": "opengirder",
+  "private": true,
+  "version": "0.1.0",
+  "description": "OpenGirder — análise e projeto de pontes (vigas, estaiadas e pênseis) com normas ABNT. 100% gratuito e open source.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @opengirder/desktop",
+    "build": "npm run build -w @opengirder/desktop",
+    "build:web": "npm run build:web -w @opengirder/desktop",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "tauri": "npm run tauri -w @opengirder/desktop --"
+  }
+}
