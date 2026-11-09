@@ -170,7 +170,7 @@ export function buildIndex(
     supports.push({ i, kind: all ? 'fixed' : 'pin' })
   })
 
-  const order = ['deck', 'tower', 'pier', 'main-cable', 'stay', 'hanger', 'crossbeam', 'rigid', 'other']
+  const order = ['deck', 'arch', 'tower', 'pier', 'main-cable', 'stay', 'hanger', 'crossbeam', 'rigid', 'other']
   const groups = [...groupCount.entries()]
     .map(([group, v]) => ({ group, ...v }))
     .sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group))

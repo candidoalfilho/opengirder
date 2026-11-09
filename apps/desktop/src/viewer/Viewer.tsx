@@ -4,6 +4,7 @@ import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { BridgeModel, BridgeResults } from '@opengirder/engine'
 import type { Overlay, Selection, Theme, ViewState } from '../store'
+import { CaptureBridge } from './capture'
 import { fmt, fmtAuto, MODE_KIND_LABEL } from '../format'
 import {
   buildDiagram,
@@ -105,6 +106,7 @@ export function Viewer(props: ViewerProps) {
         onPointerMissed={() => onSelect?.(null)}
       >
         <CameraRig idx={idx} fitKey={fitKey} cameraCmd={cameraCmd} />
+        <CaptureBridge />
         <ambientLight intensity={1.15} />
         <hemisphereLight args={['#ffffff', '#3a3226', 0.7]} />
         <directionalLight position={[-0.5 * idx.diag, -0.9 * idx.diag, 1.1 * idx.diag]} intensity={1.9} />

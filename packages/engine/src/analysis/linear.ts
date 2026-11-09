@@ -249,6 +249,41 @@ export class LinearSolver {
   }
 
   /**
+   * Resposta a um campo de deslocamentos IMPOSTO (6 por nó), sem cargas nos elementos:
+   * esforços nas barras, variação de tração dos cabos e forças nos apoios pela rigidez
+   * tangente. Usado pela análise espectral (cada modo de vibração é um campo `u`).
+   */
+  fromDisplacements(u: ArrayLike<number>): LinearState {
+    const sys = this.sys
+    const uu = Float64Array.from(u)
+    const frames: FrameForces[] = new Array(sys.frames.length)
+    const cabT = new Float64Array(sys.cables.length)
+    const st = new Float64Array(18)
+    const fint = this.internal(uu, (e, fl) => {
+      const f = sys.frames[e]
+      stationForces(fl, f.L0, 0, 0, 0, st, 0)
+      const pick = (o: number): [number, number, number] => [st[o], st[o + 1], st[o + 2]]
+      frames[e] = { id: f.id, L: f.L0, N: pick(0), Vy: pick(3), Vz: pick(6), T: pick(9), My: pick(12), Mz: pick(15) }
+    }, (i, f3) => {
+      cabT[i] = this.tdir[3 * i] * f3[0] + this.tdir[3 * i + 1] * f3[1] + this.tdir[3 * i + 2] * f3[2]
+    })
+    const reactions: Reaction[] = []
+    sys.model.nodes.forEach((nd, i) => {
+      const hasFix = nd.fix?.some(Boolean)
+      const hasSpring = nd.springs?.some((k) => k > 0)
+      if (!hasFix && !hasSpring) return
+      const R: Reaction['R'] = [0, 0, 0, 0, 0, 0]
+      for (let d = 0; d < 6; d++) {
+        const g = 6 * i + d
+        if (nd.fix?.[d]) R[d] = fint[g]
+        else if (sys.springs[g] > 0) R[d] = -sys.springs[g] * uu[g]
+      }
+      reactions.push({ node: nd.id, R })
+    })
+    return { u: Array.from(uu), frames, cables: sys.cables.map((c, i) => ({ id: c.id, dT: cabT[i] })), reactions }
+  }
+
+  /**
    * Forças internas globais (6 por nó) p/ o campo de deslocamentos `u`, pela rigidez tangente.
    * `onFrame` recebe as forças de extremidade locais k·u (pode alterá-las: o que ficar é o que
    * entra nas forças internas); `onCable` recebe a força incremental k3·Δ.

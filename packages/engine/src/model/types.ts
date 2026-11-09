@@ -7,6 +7,8 @@
  * Tudo aqui é dado puro (JSON-serializável) — o modelo vai para Web Worker e para arquivo.
  */
 
+import type { SectionGeometry } from '../sections/geometry'
+
 export type Vec3 = [number, number, number]
 
 /** 6 GDL por nó: ux, uy, uz, rx, ry, rz */
@@ -68,6 +70,8 @@ export interface Section {
   /** distância do centroide à fibra superior / inferior (m), p/ tensões; padrão depth/2 */
   yTop?: number
   yBot?: number
+  /** geometria paramétrica que originou as propriedades (desenho e dimensionamento) */
+  geometry?: SectionGeometry
 }
 
 /**
@@ -113,7 +117,7 @@ export interface CableElement {
   stage?: number
 }
 
-export type ElementGroup = 'deck' | 'tower' | 'stay' | 'main-cable' | 'hanger' | 'pier' | 'rigid' | 'crossbeam'
+export type ElementGroup = 'deck' | 'tower' | 'stay' | 'main-cable' | 'hanger' | 'pier' | 'rigid' | 'crossbeam' | 'arch'
 
 export type Element = FrameElement | CableElement
 
@@ -208,6 +212,8 @@ export interface BridgeModel {
   lanes: Lane[]
   /** ações do local (temperatura, vento, frenagem, sismo) */
   site?: SiteActions
+  /** cabos de protensão do tabuleiro (pós-tração aderente) — ver prestress/types.ts */
+  tendons?: import('../prestress/types').Tendon[]
   /** parâmetros do gerador que criou o modelo (p/ reabrir o assistente) */
   template?: { kind: string; params: unknown }
   /** metadados de projeto */
@@ -217,6 +223,8 @@ export interface BridgeModel {
     mainSpan?: number
     /** vãos (m) */
     spans?: number[]
+    /** carga móvel de projeto do modelo (a interface a seleciona ao abrir): 'Pedestres' em passarelas */
+    liveLoad?: 'TB-450' | 'TB-240' | 'Pedestres'
     /** material do tabuleiro p/ o CIA */
     deckMaterial?: 'concrete' | 'steel' | 'composite'
     /** dados de referência p/ comparar resultados (ex.: períodos medidos) */

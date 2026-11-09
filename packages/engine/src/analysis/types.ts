@@ -92,7 +92,7 @@ export interface Env3 {
 }
 
 export interface MovingLoadResult {
-  vehicle: 'TB-450' | 'TB-240'
+  vehicle: 'TB-450' | 'TB-240' | 'Pedestres'
   /** coeficientes NBR 7188 aplicados */
   CIV: number
   CNF: number
@@ -111,6 +111,8 @@ export interface MovingLoadResult {
   /** deslocamento vertical por nó (m): mín/máx (índice do nó) */
   uzMin: number[]
   uzMax: number[]
+  /** envoltória das reações de apoio (kN, kN·m), na ordem de `deadLoad.reactions` */
+  reactions?: { node: number; min: Reaction['R']; max: Reaction['R'] }[]
   /** linhas de influência amostradas p/ inspeção: cada uma com estacas e ordenadas */
   influence: { label: string; s: number[]; eta: number[] }[]
 }
@@ -204,6 +206,69 @@ export interface CombinationResult {
   reactions: { node: number; elu: { min: Reaction['R']; max: Reaction['R'] }; elsRare: { min: Reaction['R']; max: Reaction['R'] } }[]
 }
 
+/* ------------------------------------------------------------------ estabilidade, vento, sismo */
+
+export interface BucklingMode {
+  index: number
+  /** fator crítico λ sobre os esforços normais da carga permanente */
+  factor: number
+  /** forma normalizada: maior translação = 1 (u plano, 6 por nó) */
+  shape: number[]
+  /** grupo de barras comprimidas que mais alimenta a instabilidade ('tower', 'deck', 'pier'…) */
+  group: string
+  /** fração do trabalho desestabilizante que vem desse grupo (0–1) */
+  share: number
+}
+
+/** flambagem linearizada no estado de carga permanente — ver analysis/buckling.ts */
+export interface BucklingResult {
+  /** em ordem crescente de λ */
+  modes: BucklingMode[]
+  iterations: number
+  converged: boolean
+  /** maior compressão nas barras sob carga permanente (kN) */
+  maxCompression: number
+  /** λ mínimo usual p/ estabilidade elástica global (referência do aviso) */
+  minFactor: number
+}
+
+/** uma verificação aerodinâmica simplificada — ver checks/aero.ts */
+export interface AeroCheck {
+  key: 'flutter' | 'divergence' | 'vortex-v' | 'vortex-t'
+  label: string
+  /** velocidade crítica (m/s) */
+  value: number
+  unit: string
+  /** velocidade de comparação (m/s) */
+  limit?: number
+  /** limit / value (> 1 reprova) */
+  ratio?: number
+  /** ausente = informativo (não aprova nem reprova) */
+  ok?: boolean
+  note: string
+}
+
+export interface AeroResult {
+  /** velocidade característica do vento na cota do tabuleiro, Vk (m/s) — NBR 6123 */
+  Vk: number
+  /** cota do tabuleiro usada em S2 (m) */
+  z: number
+  /** largura B e altura D do tabuleiro (m) */
+  B: number
+  D: number
+  /** massa (t/m) e raio de giração da massa (m) do tabuleiro */
+  mass: number
+  radius: number
+  /** frequências usadas (Hz) e nº dos modos; 0 = modo não encontrado */
+  fV: number
+  fT: number
+  modeV: number
+  modeT: number
+  /** fator de forma da seção aplicado à velocidade de flutter da placa plana */
+  shapeFactor: number
+  checks: AeroCheck[]
+}
+
 /** protensão numa barra, vista pelas verificações de seção (3 estações) */
 export interface PrestressAtFrame {
   /** área de aço de protensão (m²) */
@@ -218,6 +283,82 @@ export interface PrestressAtFrame {
 export interface PrestressResult {
   /** na ordem de `deadLoad.frames`; null = barra sem cabo */
   atFrames: (PrestressAtFrame | null)[]
+  /** traçado, forças após cada grupo de perdas e momentos de protensão, por família de cabos */
+  tendons?: import('../prestress/types').TendonResult[]
+  /** verificações de tensões normais (ato da protensão e serviço) */
+  checks?: import('../prestress/types').PrestressCheck[]
+  /** todas as verificações normativas atendidas */
+  ok?: boolean
+}
+
+/**
+ * Verificação/dimensionamento de uma barra de tabuleiro, torre ou pilar no ELU.
+ * Valores no pior dos 3 pontos da barra (cada grandeza no seu ponto mais desfavorável).
+ * Áreas de aço em m² (×10⁴ = cm²); esforços em kN e kN·m; tensões em kPa.
+ */
+export interface SectionCheck {
+  /** id da barra */
+  id: number
+  group: string
+  /** critério: concreto armado/protendido, aço (elástico) ou só nível de tensões */
+  method: 'NBR 6118' | 'NBR 8800' | 'tensões'
+  /** tipo de dimensionamento: viga (flexão composta reta, armaduras superior e inferior)
+   *  ou pilar (torres, pilares e arcos: flexo-compressão oblíqua, armadura total no contorno) */
+  member: 'beam' | 'column' | 'stress'
+  /** true = mesa/almas deduzidas de A, largura e altura (a seção não tem geometria detalhada) */
+  approx: boolean
+  /** posição do meio da barra: x (tabuleiro) ou z (torres e pilares), em m */
+  s: number
+  /** momentos de cálculo positivo (traciona embaixo) e negativo, em módulo, e a normal concomitante */
+  MdPos: number
+  MdNeg: number
+  NdPos: number
+  NdNeg: number
+  /** envoltória da força normal de cálculo [mín, máx], tração + */
+  Nd: [number, number]
+  /** momento lateral, cortante e torçor de cálculo (módulos) */
+  MydAbs: number
+  Vd: number
+  Td: number
+  /** armadura longitudinal necessária na face inferior / superior (vigas) */
+  AsInf?: number
+  AsSup?: number
+  /** armadura longitudinal total (pilares e torres) */
+  AsTotal?: number
+  /** armadura mínima correspondente (por face nas vigas; total nos pilares) */
+  AsMin?: number
+  /** estribos: Asw/s total das almas (m²/m), incluindo a parcela de torção quando há */
+  AswS?: number
+  /** armadura longitudinal adicional de torção (m²) */
+  AslTorsion?: number
+  /** taxa geométrica total de armadura longitudinal */
+  rho?: number
+  /** maior x/d da flexão */
+  xd?: number
+  /** maior tensão normal em módulo (kPa) — aço e verificações por tensões */
+  sigma?: number
+  /** aproveitamentos (≤ 1 passa) */
+  ratios: {
+    /** flexão: taxa de armadura / 4 % (vigas) ou interação N-M (pilares) ou σ/σ_lim (aço) */
+    bending: number
+    /** bielas: Vsd/VRd2 + Tsd/TRd2 */
+    shear?: number
+  }
+  ratio: number
+  ok: boolean
+  notes?: string[]
+}
+
+/** conforto de pedestres: modos de vibração dentro das faixas críticas de passo */
+export interface PedestrianComfort {
+  /** faixas críticas de frequência (Hz) */
+  ranges: { vertical: [number, number]; lateral: [number, number] }
+  /** modos dentro de uma faixa crítica */
+  critical: { mode: number; frequency: number; kind: ModeKind; direction: 'vertical' | 'lateral' }[]
+  /** menor frequência vertical / lateral encontrada entre os modos calculados (Hz); 0 = nenhuma */
+  fVertical: number
+  fLateral: number
+  ok: boolean
 }
 
 export interface BridgeResults {
@@ -234,12 +375,72 @@ export interface BridgeResults {
   combos?: CombinationResult
   /** protensão do tabuleiro (caso 'P' em `cases`) */
   prestress?: PrestressResult
-  checks: { cables: CableCheck[] }
+  /** flambagem linearizada no estado permanente */
+  buckling?: BucklingResult
+  /** estabilidade aerodinâmica simplificada (flutter, divergência, vórtices) */
+  aero?: AeroResult
+  /** conforto de pedestres (só com a carga móvel 'Pedestres' e análise modal) */
+  pedestrian?: PedestrianComfort
+  checks: { cables: CableCheck[]; sections?: SectionCheck[] }
   /** L0 finais por cabo (aplicar no modelo p/ reaproveitar o form-finding); com `sizeCables`,
    *  traz também a área e o nº de cordoalhas redimensionados */
   cableL0: { id: number; L0: number; A?: number; strands?: number }[]
+  /** fases construtivas — análise regressiva (só com `AnalysisOptions.stages`) */
+  stages?: StagesResult
   warnings: string[]
   timings: Record<string, number>
+}
+
+/* ------------------------------------------------------------------ fases construtivas */
+
+/** estado da estrutura parcial numa fase de execução (stages/backward.ts) */
+export interface StageResult {
+  /** posição na ordem de execução (0 = primeira fase) */
+  index: number
+  name: string
+  kind: 'base' | 'cantilever' | 'closure' | 'finish'
+  note: string
+  /** ids dos elementos montados nesta fase */
+  added: number[]
+  /** ids dos elementos AINDA NÃO montados (p/ esconder no 3D) */
+  hidden: number[]
+  converged: boolean
+  iterations: number
+  /** norma do resíduo final (kN) — a fase é aceita com desequilíbrio < 0,01% do peso montado */
+  residual: number
+  /** motivo, quando a fase não convergiu */
+  error?: string
+  /** deslocamentos em relação à geometria de projeto (6 por nó; zero nos nós ainda inexistentes) */
+  u: number[]
+  /** tração (extremidade mais tracionada) dos estais já instalados (kN) */
+  stays: { id: number; T: number; slack: boolean }[]
+  nSlack: number
+  /** maior tração entre os estais instalados (kN) */
+  Tmax: number
+  /** pontas livres dos balanços: nó e deslocamento vertical (m) */
+  tips: { node: number; uz: number }[]
+  /** deslocamento vertical de maior módulo no tabuleiro montado (m, com sinal) */
+  uzMax: number
+  /** por torre: deslocamento longitudinal do topo (m) e momento longitudinal na base (kN·m) */
+  towers: { topNode: number; ux: number; baseM: number }[]
+  /** maior compressão no tabuleiro (kN, ≤ 0) */
+  deckNmin: number
+}
+
+export interface StagesResult {
+  /** fases na ordem de execução; a última é o estado final de projeto */
+  stages: StageResult[]
+  /** por estai: fase em que é instalado, tração de instalação e tração final (kN) */
+  stays: { id: number; stage: number; Tinstall: number; Tfinal: number }[]
+  /** cota de montagem: deslocamento vertical de cada nó do tabuleiro na fase em que ele é montado (m) */
+  erection: { node: number; stage: number; uz: number }[]
+  /** carga de equipamento aplicada na ponta dos balanços (kN) */
+  equipment: number
+  /** true se algum aparelho de apoio tabuleiro–torre foi travado (engaste provisório) até a última fase */
+  temporaryFixity: boolean
+  warnings: string[]
+  /** tempo total (ms) */
+  elapsed: number
 }
 
 export interface AnalysisOptions {
@@ -251,7 +452,12 @@ export interface AnalysisOptions {
    *  só aumenta. Exige carga móvel. */
   sizeCables?: boolean
   modal?: { modes: number } | false
-  moving?: { vehicle: 'TB-450' | 'TB-240'; lanes?: string[] } | false
+  moving?: { vehicle: 'TB-450' | 'TB-240' | 'Pedestres'; lanes?: string[] } | false
+  /** flambagem linearizada (padrão: 4 modos); false desliga */
+  buckling?: { modes: number } | false
+  /** fases construtivas de estaiadas por análise regressiva (dezenas de análises não lineares);
+   *  `equipment` = carga concentrada na ponta de cada balanço (kN). Padrão: desligado */
+  stages?: boolean | { equipment?: number; temporaryFixity?: boolean }
   /** false = pula as extensões (casos adicionais, combinações, verificações…); uso interno */
   extras?: boolean
   /** callback de progresso (só no mesmo thread) */

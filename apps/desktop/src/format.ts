@@ -56,6 +56,7 @@ export const GROUP_LABEL: Record<string, string> = {
   'main-cable': 'Cabo principal',
   hanger: 'Pendurais',
   pier: 'Pilares',
+  arch: 'Arco',
   rigid: 'Ligações rígidas',
   crossbeam: 'Transversinas',
   other: 'Outros',
@@ -65,6 +66,7 @@ export const TYPE_LABEL: Record<string, string> = {
   girder: 'Ponte de vigas',
   'cable-stayed': 'Ponte estaiada',
   suspension: 'Ponte pênsil',
+  arch: 'Ponte em arco',
 }
 
 export const MATERIAL_KIND_LABEL: Record<string, string> = {

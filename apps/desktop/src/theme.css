@@ -1306,3 +1306,640 @@ input[type='range'] {
   background: var(--err);
   color: #fff;
 }
+
+/* ---------- abas Ações e Combinações ---------- */
+
+.act-block {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.act-block .check .dim {
+  font-size: 10.5px;
+  font-family: var(--mono);
+  margin-left: auto;
+}
+.act-block .note {
+  margin-top: 2px;
+}
+.act-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px 10px;
+  margin-top: 6px;
+}
+.act-detail {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--bg-2);
+  font-size: 12px;
+}
+.cmb-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+}
+.cmb-where {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+.cmb-bad {
+  color: var(--err);
+}
+.cmb-item {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.cmb-head b {
+  font-family: var(--mono);
+  margin-right: 6px;
+}
+.cmb-factors {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* ------------------------------------------------------------------ aba Fases (stg-) */
+.stg-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stg-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.stg-launch {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.stg-launch .field {
+  width: 100%;
+}
+.stg-lead {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.stg-note {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-2);
+}
+.stg-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stg-player input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+.stg-current {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  min-height: 34px;
+}
+.stg-current .dim {
+  color: var(--text-dim);
+  font-size: 11.5px;
+}
+.stg-table {
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.stg-flag {
+  margin-left: 6px;
+}
+.stg-detail {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-2);
+}
+
+/* ---------- protensão (aba Protensão) ---------- */
+
+.pt-points {
+  margin-top: 8px;
+}
+.pt-points .table td {
+  padding: 3px 4px;
+}
+.pt-points .table .input {
+  height: 24px;
+}
+.pt-checks td.pt-name {
+  white-space: normal;
+  font-family: var(--sans);
+  line-height: 1.35;
+}
+.pt-checks td.pt-name span {
+  display: block;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+/* ---------- aba Estabilidade (flambagem, aerodinâmica, sismo) ---------- */
+
+.stb-tab .panel-title:not(:first-child) {
+  margin-top: 18px;
+}
+.stb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.stb-table {
+  margin: 0 -12px 8px;
+  width: calc(100% + 24px);
+}
+.stb-table td.left {
+  white-space: normal;
+}
+.stb-sub {
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--text-faint);
+}
+.stb-kv {
+  margin-bottom: 10px;
+}
+.stb-block {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.stb-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+  margin-top: 8px;
+}
+.stb-grid .wide {
+  grid-column: 1 / -1;
+}
+.stb-tab .btn {
+  margin-bottom: 8px;
+}
+
+/* ---------- aba Seções (sec-) ---------- */
+
+.sec-tab .sec-switch {
+  margin-bottom: 12px;
+}
+.sec-block {
+  margin-bottom: 16px;
+}
+.sec-block .btn {
+  margin-top: 8px;
+}
+.sec-drawing {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+.sec-drawing.sec-invalid {
+  padding: 28px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--err);
+}
+.sec-concrete {
+  fill: var(--bg-3);
+  stroke: var(--text-dim);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.sec-hole {
+  fill: var(--bg);
+  stroke: var(--text-dim);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.sec-steel {
+  fill: var(--accent-fill);
+  stroke: var(--accent);
+  stroke-width: 0.6;
+}
+.sec-cg {
+  stroke: var(--blue);
+  stroke-width: 1;
+  stroke-dasharray: 5 4;
+}
+.sec-dimline {
+  stroke: var(--text-faint);
+  stroke-width: 1;
+}
+.sec-dim {
+  fill: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.sec-kind {
+  margin-bottom: 10px;
+}
+.sec-props {
+  margin: 12px 0 8px;
+}
+.sec-warn {
+  color: var(--warn);
+  margin-top: 6px;
+}
+.sec-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.sec-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.sec-scroll {
+  overflow: auto;
+  max-height: 52vh;
+  margin: 0 -12px 10px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.table tbody tr.sec-crit td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent-fill);
+}
+
+/* ---- grupos de abas do painel direito */
+.tab-groups {
+  display: flex;
+  gap: 2px;
+  padding: 8px 8px 0;
+  flex: none;
+}
+.tab-groups button {
+  flex: 1;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  padding: 6px 4px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.tab-groups button:hover {
+  color: var(--text);
+  background: var(--bg-2);
+}
+.tab-groups button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.tab-groups .dot-err {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--err);
+}
+.tab-groups + .tab-body {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+/* ---------- editor de dados (aba Dados) ---------- */
+
+.ed-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.ed-subs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 10px 6px;
+  flex: none;
+}
+.ed-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ed-sub:hover {
+  color: var(--text);
+  background: var(--bg-2);
+}
+.ed-sub.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+.ed-sub .count {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  opacity: 0.75;
+}
+.ed-errors {
+  margin: 0 10px 6px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: rgba(255, 92, 105, 0.1);
+  color: var(--err);
+  font-size: 11.5px;
+  line-height: 1.4;
+  flex: none;
+}
+.ed-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 10px 8px;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.ed-bar .grow {
+  flex: 1;
+}
+.ed-bar .note {
+  margin: 0;
+  flex: 1 1 170px;
+}
+.ed-search {
+  width: 150px;
+}
+.ed-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ed-add .input {
+  width: 62px;
+}
+.ed-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.ed-scroll.ed-pad {
+  padding: 10px;
+}
+.ed-table td.ed-cell {
+  cursor: text;
+  min-width: 54px;
+}
+.ed-table td.ed-cell:hover {
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.ed-table td.ed-cell:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--blue);
+}
+.ed-table td.ed-cell.editing {
+  padding: 0;
+  box-shadow: none;
+}
+.ed-input {
+  display: block;
+  width: 100%;
+  min-width: 60px;
+  height: 25px;
+  padding: 0 8px;
+  border: 0;
+  outline: 1px solid var(--blue);
+  outline-offset: -1px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: right;
+}
+.ed-table td.left .ed-input {
+  text-align: left;
+}
+.ed-ph {
+  color: var(--text-faint);
+}
+.ed-table td.ed-id {
+  cursor: pointer;
+  color: var(--blue);
+  font-weight: 600;
+}
+.ed-table td.ed-id:hover {
+  text-decoration: underline;
+}
+.ed-table td.ed-ro {
+  color: var(--text-dim);
+}
+.ed-table th.ed-dof,
+.ed-table td.ed-dof {
+  text-align: center;
+  padding-left: 3px;
+  padding-right: 3px;
+}
+.ed-table td.ed-dof input {
+  accent-color: var(--accent-fill);
+  margin: 0;
+  vertical-align: middle;
+}
+.ed-table td.ed-sel {
+  padding: 0 4px;
+  cursor: default;
+  box-shadow: none;
+}
+.ed-select {
+  height: 22px;
+  max-width: 150px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.ed-select:hover,
+.ed-select:focus {
+  border-color: var(--border-strong);
+  outline: none;
+}
+.ed-select option {
+  background: var(--bg-1);
+  color: var(--text);
+}
+.ed-table td.ed-act {
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.ed-del {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ed-del:hover {
+  background: rgba(255, 92, 105, 0.15);
+  color: var(--err);
+}
+.ed-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border-top: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-dim);
+  flex: none;
+}
+.ed-pager .btn {
+  height: 22px;
+  font-size: 11px;
+}
+.ed-case {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-1);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.ed-case-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ed-case-name {
+  flex: 1;
+  font-family: var(--sans);
+  font-weight: 600;
+}
+.ed-case-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.ed-case-sub .grow {
+  flex: 1;
+}
+.ed-case .ed-add {
+  margin-bottom: 4px;
+}
+.ed-case .table th {
+  position: static;
+}
+
+/* ---------- exportação e memorial (barra superior) ---------- */
+
+.rep-wraps {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.rep-wraps .btn.active {
+  background: var(--bg-2);
+}
+.popover.rep-pop {
+  left: 0;
+  right: auto;
+  width: 312px;
+}
+.rep-group {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 13px 0 6px;
+}
+.rep-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+.popover.rep-pop .row .input {
+  width: 70px;
+}
+.rep-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.rep-modal-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-1);
+  font-size: 13px;
+  flex: none;
+}
+.rep-modal-bar .grow {
+  flex: 1;
+}
+.rep-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #e9e6dd;
+}

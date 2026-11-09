@@ -1,5 +1,7 @@
 import type { BridgeModel, Section } from '../model/types'
 import type { GirderBridgeParams } from './types'
+import { designTendon } from '../prestress/design'
+import { autoDesignPrestress } from '../prestress/autodesign'
 import { Builder, concrete, deckMaterial, deckSection, rigidMaterial, rigidSection, stations } from './builder'
 
 /**
@@ -61,7 +63,7 @@ export function generateGirder(p: GirderBridgeParams): BridgeModel {
   })
 
   const maxSpan = Math.max(...spans)
-  return {
+  const model: BridgeModel = {
     schema: 'opengirder/1',
     name: p.name,
     type: 'girder',
@@ -85,6 +87,25 @@ export function generateGirder(p: GirderBridgeParams): BridgeModel {
       deckMaterial: p.deckMaterial,
     },
   }
+  if (p.prestress?.enabled && p.deckMaterial === 'concrete') {
+    // cabo resultante pré-dimensionado por balanceamento de cargas e ajustado pelas tensões em
+    // serviço (prestress/autodesign.ts roda a análise do próprio modelo — viga: dezenas de ms)
+    const opts = {
+      balance: p.prestress.balance,
+      cover: p.prestress.cover,
+      strandArea: p.prestress.strandArea,
+      fptk: p.prestress.strandFptk ? p.prestress.strandFptk * 1000 : undefined,
+    }
+    try {
+      const auto = autoDesignPrestress(model, { ...opts, maxIterations: 6 })
+      if (auto?.model.tendons) model.tendons = auto.model.tendons
+    } catch {
+      // modelo ainda inválido (assistente em edição): fica só o balanceamento de cargas
+      const tendon = designTendon(model, opts)
+      if (tendon) model.tendons = [tendon]
+    }
+  }
+  return model
 }
 
 function fmt(v: number): string {

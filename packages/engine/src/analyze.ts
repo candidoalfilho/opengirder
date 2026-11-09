@@ -24,6 +24,15 @@ import { findForm } from './formfinding/formFinding'
 import { solveMovingLoad } from './loads/moving'
 import { LinearSolver } from './analysis/linear'
 import type { AnalysisContext } from './analysis/context'
+import { runSectionChecks } from './checks/sections'
+import { runPedestrian } from './checks/pedestrian'
+import { runBuckling } from './analysis/buckling'
+import { runAero } from './checks/aero'
+import { runSeismic } from './loads/seismic'
+import { runPrestress, runPrestressChecks } from './prestress'
+import { runActions } from './loads/actions'
+import { runCombinations } from './combos/nbr8681'
+import { runStages } from './stages/backward'
 
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now())
 
@@ -161,14 +170,14 @@ function runAnalysis(model: BridgeModel, opts: AnalysisOptions): BridgeResults {
       Liv = Math.max(...xs) - Math.min(...xs)
     }
     moving = solveMovingLoad(sys, sol.K, {
-      vehicle: opts.moving?.vehicle ?? 'TB-450',
+      vehicle: opts.moving?.vehicle ?? model.meta?.liveLoad ?? 'TB-450',
       lanes: opts.moving?.lanes,
       nonlinear,
       Liv,
       deckMaterial: model.meta?.deckMaterial,
       onProgress: (f) => progress('Carga móvel NBR 7188', 0.6 + 0.35 * f),
     })
-    if (Liv > 200) {
+    if (Liv > 200 && moving && moving.vehicle !== 'Pedestres') {
       warnings.push(
         'Vão acima de 200 m: a NBR 7188 exige estudo específico de amplificação dinâmica; foi usado o CIV de 200 m.',
       )
@@ -227,14 +236,34 @@ function runAnalysis(model: BridgeModel, opts: AnalysisOptions): BridgeResults {
         warnings.push(`${what} não realizada: ${(e as Error).message}`)
       }
     }
-    void guard
-    void ctx
+    guard('Ações (temperatura, vento, frenagem)', () => runActions(ctx))
+    guard('Protensão do tabuleiro', () => runPrestress(ctx))
+    guard('Análise sísmica', () => runSeismic(ctx))
     // [ext:casos] casos de carga adicionais — cada módulo acrescenta em ctx.cases
 
     if (ctx.cases.length > 0) res.cases = ctx.cases
+    guard('Combinações NBR 8681', () => runCombinations(ctx))
     // [ext:combinacoes] combinações NBR 8681 — preenche res.combos
 
     // [ext:verificacoes] verificações, estabilidade, fases e demais pós-processamentos
+    guard('Verificação de seções', () => runSectionChecks(ctx))
+    guard('Conforto de pedestres', () => runPedestrian(ctx))
+    guard('Análise de flambagem', () => runBuckling(ctx))
+    guard('Verificação aerodinâmica', () => runAero(ctx))
+    guard('Verificação das tensões de protensão', () => runPrestressChecks(ctx))
+    if (opts.stages && model.type === 'cable-stayed') {
+      guard('Análise das fases construtivas', () => {
+        progress('Fases construtivas', 0.97)
+        const so = typeof opts.stages === 'object' ? opts.stages : {}
+        const st = runStages(model, res.cableL0, {
+          ...so, nonlinear,
+          onProgress: (f) => progress('Fases construtivas', 0.97 + 0.03 * f),
+        })
+        res.stages = st
+        warnings.push(...st.warnings)
+        lap('fases')
+      })
+    }
 
   }
   progress('Concluído', 1)

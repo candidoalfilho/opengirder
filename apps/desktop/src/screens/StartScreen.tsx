@@ -7,6 +7,7 @@ const NEW_BUTTONS: { kind: TemplateKind; label: string }[] = [
   { kind: 'girder', label: 'Nova ponte de vigas' },
   { kind: 'cable-stayed', label: 'Nova ponte estaiada' },
   { kind: 'suspension', label: 'Nova ponte pênsil' },
+  { kind: 'arch', label: 'Nova ponte em arco' },
 ]
 
 function HeroArt() {
@@ -75,7 +76,7 @@ export function StartScreen() {
                 Open<b>Girder</b>
               </span>
             </h1>
-            <p className="tagline">Análise de pontes — vigas, estaiadas e pênseis. Gratuito e de código aberto.</p>
+            <p className="tagline">Análise e verificação de pontes — vigas, arcos, estaiadas e pênseis — com as normas brasileiras. Gratuito e de código aberto.</p>
           </div>
           <button
             className="btn-icon tip-down-left"

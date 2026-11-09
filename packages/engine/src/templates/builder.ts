@@ -10,6 +10,8 @@ import type {
   Vec3,
 } from '../model/types'
 import type { DeckSectionInput } from './types'
+import { sectionProperties } from '../sections/properties'
+import { validateGeometry } from '../sections/geometry'
 
 /** concreto — módulo secante da NBR 6118:2023 (item 8.2.8), agregado granítico (αE = 1,0) */
 export function concrete(id: string, fck: number): Material {
@@ -41,11 +43,28 @@ export function deckMaterial(kind: 'concrete' | 'steel' | 'composite', fck: numb
 }
 
 export function deckSection(d: DeckSectionInput, width: number, shape: Section['shape'] = 'box'): Section {
-  return {
+  const base: Section = {
     id: 'deck', name: 'Tabuleiro', A: d.A, Iy: d.Iy, Iz: d.Iz, J: d.J, extraDead: d.extraDead,
     // a massa do tabuleiro está espalhada na largura: raio de giração ≈ √((b² + h²)/12)
     massRadius: d.massRadius ?? Math.sqrt((width * width + d.depth * d.depth) / 12),
     depth: d.depth, width, shape,
+  }
+  if (!d.geometry) return base
+  // seção definida por geometria: as propriedades saem dela
+  const bad = validateGeometry(d.geometry)
+  if (bad.length > 0) throw new Error(`Seção do tabuleiro: ${bad.join(' ')}`)
+  const p = sectionProperties(d.geometry)
+  let extraDead = d.extraDead
+  if (p.steelArea !== undefined && p.concreteArea !== undefined) {
+    // seção mista homogeneizada em aço: o peso próprio γ_aço·A_hom não é o real —
+    // a diferença (25·Ac + 77·As − 77·A_hom) entra na carga permanente adicional
+    extraDead += 25 * p.concreteArea + 77 * p.steelArea - 77 * p.A
+  }
+  return {
+    ...base,
+    A: p.A, Iy: p.Iy, Iz: p.Iz, J: p.J, extraDead,
+    massRadius: d.massRadius ?? Math.sqrt((p.width * p.width + p.depth * p.depth) / 12),
+    depth: p.depth, width: p.width, yTop: p.yTop, yBot: p.yBot, geometry: d.geometry,
   }
 }
 

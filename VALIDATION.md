@@ -1,6 +1,6 @@
 # Validação
 
-Tudo aqui é verificado automaticamente por `npm test` (27 testes em `packages/engine/test`). Os números abaixo são os que os testes conferem.
+Tudo aqui é verificado automaticamente por `npm test` (120 testes do motor em `packages/engine/test` e 14 da interface em `apps/desktop/test`). Os números abaixo são os que os testes conferem.
 
 ## 1. Elementos, contra solução fechada
 
@@ -64,13 +64,89 @@ Em todos: análise não linear converge, form-finding converge e nenhum cabo fic
 
 O modelo de São Paulo é **inspirado** na Ponte Octávio Frias de Oliveira: mastro em X de 138 m, dois tabuleiros curvos de raio 275 m em cotas diferentes, vãos estaiados de 140 e 150 m, 144 estais. O traçado em planta, as seções e a posição das ancoragens são aproximações.
 
-## 5. Robustez
+## 5. Casos de carga adicionais e combinações
 
-`npm run sweep -w @opengirder/engine` roda 20 variações de gabarito (um e dois planos, harpa, leque, vãos desiguais, tabuleiro curvo, torre inclinada, torre em X, aço e concreto, pênsil com várias flechas, vigas com e sem pilares). Dezenove convergem com todos os cabos aprovados; a vigésima — pênsil com vão lateral de 60 m — reprova o cabo principal no trecho íngreme, que é o resultado correto para a área informada.
+Todos os casos são incrementos lineares sobre a rigidez tangente do estado de carga permanente (`analysis/linear.ts`).
+
+| Verificação | Referência | Resultado |
+|---|---|---|
+| Carga uniforme em viga biapoiada | M = qL²/8, R = qL/2, δ = 5qL⁴/384EI | exato |
+| Gradiente térmico, viga biengastada | M = EI·α·ΔT/h constante, sem flecha | exato |
+| Gradiente térmico, viga biapoiada | M = 0, contraflecha κL²/8 | exato |
+| Variação uniforme, barra impedida | N = −EA·α·ΔT | exato |
+| Recalque do apoio central, viga de 2 vãos | M = 3EIδ/L², ΔR = −6EIδ/L³ | exato |
+| Cabo com L0 alongado, ancoragens presas | ΔT = −EA·ΔL0/L0 | 3 casas |
+| Vento NBR 6123 | S2, q = 0,613·Vk² e força por metro conferidos à mão; viga biapoiada My = f·L²/8 | exato |
+| Frenagem NBR 7188 | Hf = 0,25·B·L·CNF ≥ 135 kN, toda no apoio fixo | exato |
+| Combinações NBR 8681 | ELU, rara, frequente e quase permanente de G + Q + vento + frenagem conferidas à mão | exato |
+| Ações alternativas (TU+ × TU−) | entra só uma do par | confere |
+| Sismo NBR 15421, oscilador de 1 GDL | cortante na base = m·Sa(T)·g·I/R | erro < 10⁻⁶ |
+
+## 6. Protensão
+
+| Verificação | Referência | Resultado |
+|---|---|---|
+| Viga biapoiada, cabo parabólico | carga equivalente 8·P·f/L²; M = −P·e; reações nulas; contraflecha 5wL⁴/384EI | exato |
+| Viga contínua de 2 vãos, cabo reto excêntrico | hiperestático 1,5·P·e no apoio central; reação −3·P·e/L | exato |
+| Perda por atrito | P(x) = Pi·e^−(μ·Σα + k·x) | exato |
+| Acomodação da ancoragem | comprimento afetado √(δ·Ep·Ap/p), queda 2·p·w | exato |
+| Viaduto 30 + 40 + 30 m | 150 cordoalhas, perdas totais de 24,6%, ELS-D e ELS-F atendidos | regressão |
+
+## 7. Seções e verificações
+
+| Verificação | Referência | Resultado |
+|---|---|---|
+| Propriedades de retângulo, T, círculo e seção mista | fórmulas fechadas e teorema de Steiner | exato |
+| Torção de tubo de parede fina e de caixão | Bredt: J = 4·Am²/∮ds/t | exato |
+| Flexão simples NBR 6118 | tabelas KMD (0,100 → KX 0,157; 0,200 → KX 0,341); seção 20 × 50, C25, Md = 140 kN·m → 8,23 cm² | confere |
+| Seção T com linha neutra na alma, armadura dupla | cálculo manual | confere |
+| Cortante, modelo I | VRd2, Vc0, Asw/s e armadura mínima de exemplo manual | confere |
+| Pilar | compressão e tração centradas; momento resistente sem aço | exato |
+
+## 8. Estabilidade
+
+| Verificação | Referência | Resultado |
+|---|---|---|
+| Coluna de Euler biarticulada (8 elementos) | Pcr = π²EI/L² | erro < 0,5% |
+| Coluna engastada-livre | Pcr = π²EI/4L² | erro < 0,05% |
+| Pórtico engastado deslocável | Pcr = 7,38·EI/h² | erro < 0,5% |
+| Flutter de Selberg | cálculo manual e forma alternativa da fórmula | exato |
+| Tacoma Narrows (1940), seção em H | colapso com vento de 18,8 m/s | Vcr ≈ 8,5 m/s: reprova |
+
+Fatores críticos de flambagem dos modelos de referência (sobre a carga permanente): Golden Gate 15,1 (torres); São Paulo 20,9 (mastro); Rio Negro 7,3; três vãos 8,3; arco atirantado 9,2.
+
+## 9. Arcos e fases construtivas
+
+| Verificação | Referência | Resultado |
+|---|---|---|
+| Arco parabólico biarticulado, carga uniforme | H = qL²/8f, M ≈ 0 | H dentro de 0,5%; M < 0,4% de qL²/8 |
+| Bowstring de 130 m | reação horizontal nula; N do tirante = empuxo | Σ Rx < 10⁻⁶; N a menos de 0,5% |
+| Balanço com um estai, fase sem estai | δ = wL⁴/8EI, M = wL²/2 | exato |
+| Fases construtivas, última fase | reproduz o estado final de projeto | trações iguais (5·10⁻⁷ %) |
+
+## 10. Robustez
+
+`npm run sweep -w @opengirder/engine` roda 27 variações de gabarito (um e dois planos, harpa, leque, vãos desiguais, tabuleiro curvo, torre inclinada, torre em X, aço e concreto, pênsil com várias flechas, vigas com e sem pilares, sete arcos). Vinte e seis convergem com todos os cabos aprovados; a outra — pênsil com vão lateral de 60 m — reprova o cabo principal no trecho íngreme, que é o resultado correto para a área informada.
+
+A interface é exercitada num navegador headless: os nove modelos prontos rodam e todas as abas renderizam sem erro de console.
 
 ## Hipóteses a ter em mente
 
-- Carga móvel e modal são **linearizadas** em torno do estado de carga permanente. Em pontes pênseis muito carregadas isso superestima flechas (a rigidez cresce com a carga).
+- Carga móvel, modal e todas as ações variáveis são **linearizadas** em torno do estado de carga permanente. Em pontes pênseis muito carregadas isso superestima flechas (a rigidez cresce com a carga).
 - Acima de 200 m de vão a NBR 7188 pede estudo específico de amplificação dinâmica; o programa usa o CIV de 200 m e avisa.
 - Limites dos cabos: 0,45·Fu em serviço e φ = 0,65 no ELU (fib Bulletin 30, PTI DC45.1) — a ABNT não tem norma de estais.
-- Combinação última: 1,35·G + 1,5·Q.
+- As envoltórias das combinações são por esforço, não concomitantes (exceto a normal associada ao momento extremo). No ELU, γg multiplica o esforço permanente, não a carga.
+- Vento só transversal, sem sustentação nem momento aerodinâmico; o arrasto do tabuleiro segue a curva da EN 1991-1-4, porque o capítulo de pontes da NBR 6123:2023 não está implementado.
+- Fases construtivas sem fluência, retração nem retensionamento: os comprimentos de fabricação são os do estado final.
+- Verificação de seções sobre o modelo de espinha: sem geometria detalhada, mesa e almas são deduzidas da área e o resultado é indicativo. Efeitos locais de 2ª ordem em pilares (NBR 6118, 15.8), flambagem local e lateral do aço não são verificados.
+- A triagem aerodinâmica usa fatores de forma indicativos e não substitui ensaio em túnel de vento.
+
+## Coeficientes ainda não conferidos no texto das normas
+
+Os valores abaixo foram implementados a partir de bibliografia e conferidos entre si, mas não contra o texto oficial da ABNT. Antes de usar em projeto, confira:
+
+- NBR 8681: fatores ψ0, ψ1, ψ2 de pontes rodoviárias, vento e temperatura (Tabela 6).
+- NBR 6123: parâmetros b, p e Fr do fator S2; S3 = 1,10 como padrão.
+- NBR 6118: limites de σpi na pós-tração, k = 0,01·μ, perdas progressivas (9.6.3.4.2), ψ1000 (Tabela 8.4), α do fct,f e ηc para fck > 40 MPa.
+- NBR 15421: tabela de Ca e Cv e ramos do espectro (valores da edição de 2006).
+- NBR 7188: carga de multidão de 5 kN/m² em passarelas.

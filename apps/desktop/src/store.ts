@@ -61,7 +61,11 @@ export interface UiOptions {
   modal: boolean
   modes: number
   moving: boolean
-  vehicle: 'TB-450' | 'TB-240'
+  vehicle: 'TB-450' | 'TB-240' | 'Pedestres'
+  /** fases construtivas de estaiadas (análise regressiva) */
+  stages: boolean
+  /** carga de equipamento na ponta de cada balanço durante a execução (kN) */
+  stageEquipment: number
 }
 
 export interface AnalysisStatus {
@@ -97,10 +101,16 @@ interface State {
   analysis: AnalysisStatus
   rightTab: RightTab
   overlay: Overlay | null
+  /** pilhas de desfazer/refazer do modelo (até 30 estados) */
+  past: BridgeModel[]
+  future: BridgeModel[]
   toast: Toast | null
 
   /** altera o modelo (dados de entrada): marca como modificado e descarta os resultados */
   updateModel: (fn: (m: BridgeModel) => BridgeModel) => void
+  /** desfaz / refaz a última edição do modelo feita por `updateModel` */
+  undo: () => void
+  redo: () => void
   /** mostra um campo de deslocamentos no 3D (null volta à vista do modelo) */
   showOverlay: (o: Overlay | null) => void
   setTheme: (t: Theme) => void
@@ -175,6 +185,7 @@ function toEngineOptions(o: UiOptions): AnalysisOptions {
     nonlinear: o.nonlinear,
     modal: o.modal ? { modes: Math.max(1, Math.round(o.modes)) } : false,
     moving: o.moving ? { vehicle: o.vehicle } : false,
+    stages: o.stages ? { equipment: Math.max(0, o.stageEquipment || 0) } : false,
   }
 }
 
@@ -209,6 +220,13 @@ export const useStore = create<State>((set, get) => {
       analysis: IDLE,
       rightTab: 'summary',
       overlay: null,
+      past: [],
+      future: [],
+      // carga móvel de projeto do modelo (passarelas: pedestres); sem indicação, volta ao trem-tipo rodoviário
+      options: {
+        ...s.options,
+        vehicle: model.meta?.liveLoad ?? (s.options.vehicle === 'Pedestres' ? 'TB-450' : s.options.vehicle),
+      },
     }))
   }
 
@@ -224,10 +242,12 @@ export const useStore = create<State>((set, get) => {
     wizard: null,
     selection: null,
     view: { ...DEFAULT_VIEW },
-    options: { formFinding: true, sizeCables: true, nonlinear: true, modal: true, modes: 12, moving: true, vehicle: 'TB-450' },
+    options: { formFinding: true, sizeCables: true, nonlinear: true, modal: true, modes: 12, moving: true, stages: false, stageEquipment: 0, vehicle: 'TB-450' },
     analysis: IDLE,
     rightTab: 'summary',
     overlay: null,
+    past: [],
+    future: [],
     toast: null,
 
     updateModel: (fn) => {
@@ -243,6 +263,46 @@ export const useStore = create<State>((set, get) => {
         dirty: true,
         analysis: IDLE,
         overlay: null,
+        past: [...s.past, cur].slice(-30),
+        future: [],
+        view: { ...s.view, mode: 'model' },
+      }))
+    },
+
+    undo: () => {
+      const { past, future, model: cur } = get()
+      const prev = past[past.length - 1]
+      if (!prev || !cur) return
+      stopWorker()
+      set((s) => ({
+        model: prev,
+        past: past.slice(0, -1),
+        future: [cur, ...future].slice(0, 30),
+        results: null,
+        modelErrors: safeValidate(prev),
+        dirty: true,
+        analysis: IDLE,
+        overlay: null,
+        selection: null,
+        view: { ...s.view, mode: 'model' },
+      }))
+    },
+
+    redo: () => {
+      const { past, future, model: cur } = get()
+      const next = future[0]
+      if (!next || !cur) return
+      stopWorker()
+      set((s) => ({
+        model: next,
+        past: [...past, cur].slice(-30),
+        future: future.slice(1),
+        results: null,
+        modelErrors: safeValidate(next),
+        dirty: true,
+        analysis: IDLE,
+        overlay: null,
+        selection: null,
         view: { ...s.view, mode: 'model' },
       }))
     },

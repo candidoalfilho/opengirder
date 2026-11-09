@@ -7,8 +7,9 @@ import { IconDots, IconFit, IconGear, IconMoon, IconOpen, IconPlay, IconSave, Ic
 import { Viewer, type CameraPreset } from './viewer/Viewer'
 import { LeftPanel } from './panels/LeftPanel'
 import { RightPanel } from './panels/RightPanel'
+import { TopBarExtras } from './panels/features/TopBarExtras'
 
-const TEMPLATE_KINDS = ['girder', 'cable-stayed', 'suspension']
+const TEMPLATE_KINDS = ['girder', 'cable-stayed', 'suspension', 'arch']
 
 const MODES: { key: ViewMode; label: string; needsResults: boolean }[] = [
   { key: 'model', label: 'Modelo', needsResults: false },
@@ -108,14 +109,22 @@ function OptionsPopover({ onClose }: { onClose: () => void }) {
           className="select"
           disabled={!o.moving}
           value={o.vehicle}
-          onChange={(e) => set({ vehicle: e.target.value as 'TB-450' | 'TB-240' })}
+          onChange={(e) => set({ vehicle: e.target.value as 'TB-450' | 'TB-240' | 'Pedestres' })}
         >
           <option value="TB-450">TB-450</option>
           <option value="TB-240">TB-240</option>
+          <option value="Pedestres">Pedestres (passarela)</option>
         </select>
       </div>
       <div className="note" style={{ marginTop: 10 }}>
-        Trem-tipo da NBR 7188 com CIV, CNF e CIA.
+        Trem-tipo da NBR 7188 com CIV, CNF e CIA. Pedestres: multidão de 5 kN/m², sem impacto.
+      </div>
+      <label className="check" style={{ marginTop: 10 }}>
+        <input type="checkbox" checked={o.stages} onChange={(e) => set({ stages: e.target.checked })} />
+        Fases construtivas (análise regressiva)
+      </label>
+      <div className="note" style={{ margin: '0 0 6px 22px' }}>
+        Só em pontes estaiadas: desmonta a ponte na ordem inversa da execução e analisa cada fase. Veja a aba Fases.
       </div>
     </div>
   )
@@ -214,6 +223,7 @@ function TopBar() {
         <IconSave size={14} />
         Salvar
       </button>
+      <TopBarExtras />
       <div className="spacer" />
       <button
         className="btn-icon tip-down-left"

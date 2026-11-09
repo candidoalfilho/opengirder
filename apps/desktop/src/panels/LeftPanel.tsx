@@ -25,7 +25,7 @@ export function LeftPanel() {
       if (e.kind === 'cable') cables++
       else frames++
     }
-    const order = ['deck', 'tower', 'pier', 'main-cable', 'stay', 'hanger', 'crossbeam', 'rigid', 'other']
+    const order = ['deck', 'arch', 'tower', 'pier', 'main-cable', 'stay', 'hanger', 'crossbeam', 'rigid', 'other']
     const list = [...groups.entries()].sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))
     let xmin = Infinity
     let xmax = -Infinity

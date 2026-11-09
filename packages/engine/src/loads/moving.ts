@@ -18,7 +18,7 @@
 import type { Env3, MovingLoadResult } from '../analysis/types'
 import type { SkylineMatrix } from '../analysis/skyline'
 import { type BridgeSystem, frameTangentLocal } from '../analysis/system'
-import { stationForces, toLocal } from '../analysis/frame'
+import { stationForces, toGlobal, toLocal } from '../analysis/frame'
 import { VEHICLES, type VehicleId, ciaFactor, civ, cnf, trafficLanes } from './nbr7188'
 
 export interface MovingOptions {
@@ -58,9 +58,17 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
   const nFr = sys.frames.length
   const nCb = sys.cables.length
   const nNd = sys.nNodes
-  const nResp = nFr * NF + nCb + nNd
+  // reações: 6 por nó apoiado (GDL fixo ou com mola), na mesma ordem de deadLoad.reactions
+  const supNodes: number[] = []
+  model.nodes.forEach((nd, i) => {
+    if (nd.fix?.some(Boolean) || nd.springs?.some((k) => k > 0)) supNodes.push(i)
+  })
+  const supSlot = new Int32Array(nNd).fill(-1)
+  supNodes.forEach((i, k) => (supSlot[i] = k))
+  const nResp = nFr * NF + nCb + nNd + 6 * supNodes.length
   const offC = nFr * NF
   const offU = offC + nCb
+  const offR = offU + nNd
   const { eq, X } = sys
 
   // versores de tração dos cabos (extremidade mais tracionada) p/ linearizar ΔT
@@ -81,6 +89,7 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
   const UG = new Float64Array(12)
   const UL = new Float64Array(12)
   const FL = new Float64Array(12)
+  const FGr = new Float64Array(12)
   const duFull = new Float64Array(6 * nNd)
   const respond = (p: Float64Array): Float64Array => {
     const du = K.solve(p)
@@ -100,6 +109,23 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
         FL[i] = s
       }
       stationForces(FL, f.L0, 0, 0, 0, r, e * NF)
+      const sa = supSlot[f.a]
+      const sb = supSlot[f.b]
+      if (sa >= 0 || sb >= 0) {
+        // forças de extremidade em eixos globais → reações nos GDL fixos
+        toGlobal(f.R, FL, FGr)
+        for (let d = 0; d < 6; d++) {
+          if (sa >= 0 && eq[6 * f.a + d] < 0) r[offR + 6 * sa + d] += FGr[d]
+          if (sb >= 0 && eq[6 * f.b + d] < 0) r[offR + 6 * sb + d] += FGr[6 + d]
+        }
+      }
+    }
+    for (let k = 0; k < supNodes.length; k++) {
+      const i = supNodes[k]
+      for (let d = 0; d < 6; d++) {
+        const g = 6 * i + d
+        if (eq[g] >= 0 && sys.springs[g] > 0) r[offR + 6 * k + d] = -sys.springs[g] * duFull[g]
+      }
     }
     for (let i = 0; i < nCb; i++) {
       const c = sys.cables[i]
@@ -111,6 +137,15 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
       const fy = k[3] * dx + k[4] * dy + k[5] * dz
       const fz = k[6] * dx + k[7] * dy + k[8] * dz
       r[offC + i] = tdir[3 * i] * fx + tdir[3 * i + 1] * fy + tdir[3 * i + 2] * fz
+      const sa = supSlot[c.a]
+      const sb = supSlot[c.b]
+      if (sa >= 0 || sb >= 0) {
+        const f3 = [fx, fy, fz]
+        for (let d = 0; d < 3; d++) {
+          if (sa >= 0 && eq[6 * c.a + d] < 0) r[offR + 6 * sa + d] -= f3[d]
+          if (sb >= 0 && eq[6 * c.b + d] < 0) r[offR + 6 * sb + d] += f3[d]
+        }
+      }
     }
     for (let i = 0; i < nNd; i++) r[offU + i] = duFull[6 * i + 2]
     return r
@@ -256,13 +291,15 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
   if (lanes.length === 0) return undefined
 
   // ---- coeficientes de ponderação
-  const CIV = civ(opts.Liv)
+  // passarelas (sem veículo): a carga de multidão não é majorada
+  const crowd = veh.nAxles === 0
+  const CIV = crowd ? 1 : civ(opts.Liv)
   const widest = Math.max(...lanes.map((l) => l.width))
-  const CNF = cnf(trafficLanes(widest))
-  const CIA = ciaFactor(opts.deckMaterial)
+  const CNF = crowd ? 1 : cnf(trafficLanes(widest))
+  const CIA = crowd ? 1 : ciaFactor(opts.deckMaterial)
   const q = veh.distributed
   const axleFull = 2 * veh.wheelLoad
-  const axleLoad = axleFull - (q * veh.width * veh.length) / veh.nAxles
+  const axleLoad = crowd ? 0 : axleFull - (q * veh.width * veh.length) / veh.nAxles
 
   // CIA: barras do tabuleiro a menos de 5 m de uma junta/extremidade
   const nearJoint = new Uint8Array(nFr)
@@ -405,5 +442,12 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
     axleLoad, axleSpacing: a, nAxles: veh.nAxles,
     distributed: q * widest,
     frames, cables, uzMin, uzMax, influence,
+    reactions: supNodes.map((i, k) => {
+      const o = offR + 6 * k
+      const pick = (v: Float64Array): [number, number, number, number, number, number] => [
+        base * v[o], base * v[o + 1], base * v[o + 2], base * v[o + 3], base * v[o + 4], base * v[o + 5],
+      ]
+      return { node: model.nodes[i].id, min: pick(envMin), max: pick(envMax) }
+    }),
   }
 }

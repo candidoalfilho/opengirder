@@ -11,6 +11,8 @@ export interface Field {
   /** valor exibido = valor do parâmetro × scale (ex.: m² → mm²) */
   scale?: number
   wide?: boolean
+  /** listas: aceita a lista vazia */
+  allowEmpty?: boolean
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   show?: (p: any) => boolean
 }
@@ -26,14 +28,39 @@ const DECK_MATERIAL = [
   { value: 'composite', label: 'Mista aço-concreto' },
 ]
 
-const deckSection = (title = 'Seção do tabuleiro'): FieldGroup => ({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const byProps = (p: any): boolean => !p.deck?.geometry
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const byBox = (p: any): boolean => p.deck?.geometry?.kind === 'box'
+
+/** `geometry` = oferece definir a seção por um caixão paramétrico (A, I e J calculados) */
+const deckSection = (title = 'Seção do tabuleiro', geometry = false): FieldGroup => ({
   title,
   fields: [
-    { key: 'deck.A', label: 'Área', unit: 'm²' },
-    { key: 'deck.depth', label: 'Altura', unit: 'm' },
-    { key: 'deck.Iz', label: 'Inércia vertical Iz', unit: 'm⁴' },
-    { key: 'deck.Iy', label: 'Inércia lateral Iy', unit: 'm⁴' },
-    { key: 'deck.J', label: 'Constante de torção J', unit: 'm⁴' },
+    ...(geometry
+      ? ([
+          {
+            key: '__boxGeometry',
+            label: 'Definir a seção por geometria (caixão de concreto)',
+            kind: 'bool',
+            wide: true,
+            hint: 'Área, inércias e torção são calculadas das dimensões; outros tipos de seção na aba Seções',
+          },
+          { key: 'deck.geometry.topWidth', label: 'Largura da laje superior', unit: 'm', show: byBox },
+          { key: 'deck.geometry.bottomWidth', label: 'Largura do fundo', unit: 'm', show: byBox },
+          { key: 'deck.geometry.depth', label: 'Altura', unit: 'm', show: byBox },
+          { key: 'deck.geometry.cantilever', label: 'Balanço de cada lado', unit: 'm', show: byBox },
+          { key: 'deck.geometry.topSlab', label: 'Laje superior', unit: 'm', show: byBox },
+          { key: 'deck.geometry.bottomSlab', label: 'Laje inferior', unit: 'm', show: byBox },
+          { key: 'deck.geometry.web', label: 'Espessura das almas', unit: 'm', show: byBox },
+          { key: 'deck.geometry.cells', label: 'Nº de células', kind: 'int', show: byBox },
+        ] as Field[])
+      : []),
+    { key: 'deck.A', label: 'Área', unit: 'm²', show: geometry ? byProps : undefined },
+    { key: 'deck.depth', label: 'Altura', unit: 'm', show: geometry ? byProps : undefined },
+    { key: 'deck.Iz', label: 'Inércia vertical Iz', unit: 'm⁴', show: geometry ? byProps : undefined },
+    { key: 'deck.Iy', label: 'Inércia lateral Iy', unit: 'm⁴', show: geometry ? byProps : undefined },
+    { key: 'deck.J', label: 'Constante de torção J', unit: 'm⁴', show: geometry ? byProps : undefined },
     { key: 'deck.extraDead', label: 'Permanente adicional', unit: 'kN/m', hint: 'Pavimento, barreiras, guarda-corpo' },
   ],
 })
@@ -47,6 +74,14 @@ const GIRDER: FieldGroup[] = [
       { key: 'pierHeight', label: 'Altura dos pilares', unit: 'm', hint: '0 = apoios diretos' },
       { key: 'elementLength', label: 'Tamanho dos elementos', unit: 'm' },
       { key: 'monolithic', label: 'Pilares engastados no tabuleiro (pórtico)', kind: 'bool', wide: true },
+      {
+        key: 'prestress.enabled',
+        label: 'Tabuleiro protendido (pós-tração pré-dimensionada)',
+        kind: 'bool',
+        wide: true,
+        hint: 'Cabo resultante parabólico que balanceia a carga permanente; ajuste na aba Protensão',
+        show: (p) => p.deckMaterial === 'concrete',
+      },
     ],
   },
   {
@@ -58,7 +93,7 @@ const GIRDER: FieldGroup[] = [
       { key: 'fck', label: 'fck do concreto', unit: 'MPa' },
     ],
   },
-  deckSection(),
+  deckSection('Seção do tabuleiro', true),
 ]
 
 const CABLE_STAYED: FieldGroup[] = [
@@ -149,6 +184,16 @@ const CABLE_STAYED: FieldGroup[] = [
     fields: [
       { key: 'deckWidth', label: 'Largura total', unit: 'm' },
       { key: 'carriageway', label: 'Largura carregável', unit: 'm' },
+      {
+        key: 'liveLoad',
+        label: 'Carga móvel de projeto',
+        kind: 'select',
+        options: [
+          { value: 'TB-450', label: 'TB-450 (rodoviária)' },
+          { value: 'TB-240', label: 'TB-240 (vicinal)' },
+          { value: 'Pedestres', label: 'Pedestres — passarela (5 kN/m²)' },
+        ],
+      },
       { key: 'deckMaterial', label: 'Material', kind: 'select', options: DECK_MATERIAL },
       { key: 'fck', label: 'fck do concreto', unit: 'MPa' },
     ],
@@ -198,16 +243,153 @@ const SUSPENSION: FieldGroup[] = [
   deckSection('Viga de rigidez (seção equivalente)'),
 ]
 
+const ARCH: FieldGroup[] = [
+  {
+    title: 'Geometria',
+    fields: [
+      { key: 'name', label: 'Nome', kind: 'text', wide: true },
+      {
+        key: 'layout',
+        label: 'Posição do tabuleiro',
+        kind: 'select',
+        wide: true,
+        options: [
+          { value: 'through', label: 'Arco superior — tabuleiro suspenso por pendurais' },
+          { value: 'half-through', label: 'Tabuleiro intermediário — pendurais e montantes' },
+          { value: 'deck', label: 'Arco inferior — tabuleiro sobre montantes' },
+        ],
+      },
+      {
+        key: 'tied',
+        label: 'Arco atirantado (bowstring): o tabuleiro é o tirante',
+        kind: 'bool',
+        wide: true,
+        hint: 'Sem empuxo nas fundações: um apoio fixo e os demais móveis',
+        show: (p) => p.layout === 'through',
+      },
+      { key: 'span', label: 'Vão do arco', unit: 'm' },
+      { key: 'rise', label: 'Flecha', unit: 'm', hint: 'Típico entre vão/7 e vão/5' },
+      {
+        key: 'shape',
+        label: 'Eixo do arco',
+        kind: 'select',
+        options: [
+          { value: 'parabola', label: 'Parábola' },
+          { value: 'catenary', label: 'Catenária' },
+          { value: 'funicular', label: 'Funicular da carga permanente' },
+        ],
+      },
+      { key: 'panels', label: 'Painéis', kind: 'int', hint: 'Pendurais ou montantes = painéis − 1' },
+      { key: 'springLevel', label: 'Cota das nascenças', unit: 'm' },
+      {
+        key: 'deckOffset',
+        label: 'Tabuleiro acima das nascenças',
+        unit: 'm',
+        show: (p) => p.layout === 'half-through',
+      },
+      {
+        key: 'deckOffset',
+        label: 'Folga entre o fecho e o tabuleiro',
+        unit: 'm',
+        hint: 'Mínimo de 1 m',
+        show: (p) => p.layout === 'deck',
+      },
+      {
+        key: 'hinges',
+        label: 'Nascenças',
+        kind: 'select',
+        options: [
+          { value: 'fixed', label: 'Engastadas' },
+          { value: 'two-hinged', label: 'Articuladas (biarticulado)' },
+        ],
+        show: (p) => !(p.layout === 'through' && p.tied),
+      },
+      { key: 'elementLength', label: 'Tamanho dos elementos', unit: 'm' },
+      {
+        key: 'approachSpans',
+        label: 'Vãos de acesso de cada lado',
+        unit: 'm',
+        kind: 'list',
+        wide: true,
+        allowEmpty: true,
+        hint: 'Do arco para fora, separados por ponto e vírgula. Vazio = sem acessos',
+      },
+    ],
+  },
+  {
+    title: 'Arcos',
+    fields: [
+      {
+        key: 'planes',
+        label: 'Arcos',
+        kind: 'select',
+        options: [
+          { value: 1, label: '1 — no eixo' },
+          { value: 2, label: '2 — laterais' },
+        ],
+      },
+      { key: 'archSpacing', label: 'Distância entre os arcos', unit: 'm', show: (p) => p.planes === 2 },
+      {
+        key: 'inclinationDeg',
+        label: 'Inclinação para dentro',
+        unit: '°',
+        hint: 'Arcos em "alça de cesto"',
+        show: (p) => p.planes === 2 && p.layout !== 'deck',
+      },
+      { key: 'braced', label: 'Travessas de contraventamento entre os arcos', kind: 'bool', wide: true, show: (p) => p.planes === 2 },
+      {
+        key: 'arch.material',
+        label: 'Material',
+        kind: 'select',
+        options: [
+          { value: 'steel', label: 'Aço' },
+          { value: 'concrete', label: 'Concreto' },
+        ],
+      },
+      { key: 'arch.fck', label: 'fck', unit: 'MPa', show: (p) => p.arch?.material === 'concrete' },
+      { key: 'arch.depth', label: 'Altura da seção', unit: 'm' },
+      { key: 'arch.width', label: 'Largura da seção', unit: 'm' },
+      { key: 'arch.A', label: 'Área', unit: 'm²' },
+      { key: 'arch.I', label: 'Inércia no plano do arco', unit: 'm⁴' },
+      { key: 'arch.Iout', label: 'Inércia fora do plano', unit: 'm⁴' },
+      { key: 'arch.J', label: 'Constante de torção J', unit: 'm⁴' },
+    ],
+  },
+  {
+    title: 'Pendurais e montantes',
+    fields: [
+      { key: 'hangerArea', label: 'Área de cada pendural', unit: 'cm²', scale: 1e4, show: (p) => p.layout !== 'deck' },
+      { key: 'hangerFpk', label: 'fptk dos pendurais', unit: 'MPa', show: (p) => p.layout !== 'deck' },
+      { key: 'column.width', label: 'Largura do montante', unit: 'm', show: (p) => p.layout !== 'through' },
+      { key: 'column.A', label: 'Área do montante', unit: 'm²', show: (p) => p.layout !== 'through' },
+      { key: 'column.I', label: 'Inércia do montante', unit: 'm⁴', show: (p) => p.layout !== 'through' },
+      { key: 'column.J', label: 'Torção do montante J', unit: 'm⁴', show: (p) => p.layout !== 'through' },
+    ],
+  },
+  {
+    title: 'Tabuleiro',
+    fields: [
+      { key: 'deckWidth', label: 'Largura total', unit: 'm' },
+      { key: 'carriageway', label: 'Largura carregável', unit: 'm', hint: 'Pista + acostamentos' },
+      { key: 'deckMaterial', label: 'Material', kind: 'select', options: DECK_MATERIAL },
+      { key: 'fck', label: 'fck do concreto', unit: 'MPa' },
+    ],
+  },
+  deckSection(),
+]
+
 export const WIZARD_FIELDS: Record<TemplateKind, FieldGroup[]> = {
   girder: GIRDER,
   'cable-stayed': CABLE_STAYED,
   suspension: SUSPENSION,
+  arch: ARCH,
 }
 
 export const WIZARD_TITLE: Record<TemplateKind, string> = {
   girder: 'Ponte de vigas',
   'cable-stayed': 'Ponte estaiada',
   suspension: 'Ponte pênsil',
+  arch: 'Ponte em arco',
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -134,6 +134,24 @@ export function BridgeGlyph({ kind }: { kind: string }) {
       </svg>
     )
   }
+  if (kind === 'arch') {
+    const hangers = []
+    for (let i = 1; i < 10; i++) {
+      const x = 20 + i * 8
+      const t = (x - 20) / 80
+      // parábola do arco (Bézier quadrática com controle em y = −20)
+      const y = 36 - 112 * t * (1 - t)
+      hangers.push(<path key={i} d={`M${x} ${y.toFixed(1)}V36`} strokeWidth={0.8} />)
+    }
+    return (
+      <svg viewBox="0 0 120 48" {...common}>
+        <path d="M4 36h112" strokeWidth={2.2} />
+        <path d="M20 36Q60 -20 100 36" strokeWidth={2.2} />
+        <path d="M20 44V36M100 44V36" strokeWidth={2.2} />
+        {hangers}
+      </svg>
+    )
+  }
   if (kind === 'cable-stayed') {
     const stays = []
     for (let i = 1; i <= 6; i++) {

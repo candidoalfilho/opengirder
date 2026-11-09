@@ -33,6 +33,10 @@ const TIMING_LABEL: Record<string, string> = {
   deadLoad: 'Carga permanente',
   modal: 'Análise modal',
   cargaMovel: 'Carga móvel',
+  fases: 'Fases construtivas',
+  sismo: 'Sismo (análise espectral)',
+  flambagem: 'Flambagem',
+  aerodinamica: 'Estabilidade aerodinâmica',
   dimensionamento: 'Dimensionamento dos estais',
   moving: 'Carga móvel',
   verificacoes: 'Verificações',
@@ -456,6 +460,25 @@ export function ModesTab({ results }: { results: BridgeResults | null }) {
           </tfoot>
         </table>
       </div>
+      {results.pedestrian && (
+        <div className="note" style={{ padding: '8px 12px', flex: 'none', borderTop: '1px solid var(--border)' }}>
+          <b style={{ color: results.pedestrian.ok ? 'var(--ok, #3ecf8e)' : 'var(--err)' }}>
+            Conforto de pedestres — {results.pedestrian.ok ? 'nenhum modo na faixa crítica do passo' : 'modos na faixa crítica do passo'}
+          </b>
+          <div>
+            Faixas críticas: vertical {fmt(results.pedestrian.ranges.vertical[0], 1)}–{fmt(results.pedestrian.ranges.vertical[1], 1)} Hz, lateral{' '}
+            {fmt(results.pedestrian.ranges.lateral[0], 1)}–{fmt(results.pedestrian.ranges.lateral[1], 1)} Hz. Menor frequência calculada: vertical{' '}
+            {results.pedestrian.fVertical > 0 ? `${fmt(results.pedestrian.fVertical, 2)} Hz` : '—'}, lateral{' '}
+            {results.pedestrian.fLateral > 0 ? `${fmt(results.pedestrian.fLateral, 2)} Hz` : '—'}.
+          </div>
+          {results.pedestrian.critical.map((c) => (
+            <div key={c.mode}>
+              Modo {c.mode} ({MODE_KIND_LABEL[c.kind] ?? c.kind}): {fmt(c.frequency, 2)} Hz — faixa {c.direction === 'vertical' ? 'vertical' : 'lateral'}
+            </div>
+          ))}
+          {!results.pedestrian.ok && <div>Verifique as acelerações por análise dinâmica com o carregamento de pedestres.</div>}
+        </div>
+      )}
       <div className="note" style={{ padding: '8px 12px', flex: 'none', borderTop: '1px solid var(--border)' }}>
         Clique em um modo para animá-lo no 3D. Modos calculados sobre a rigidez tangente do estado de carga permanente.
       </div>
@@ -522,7 +545,9 @@ export function MovingTab({ model, results }: { model: BridgeModel; results: Bri
 
   return (
     <div>
-      <div className="panel-title">Trem-tipo NBR 7188 — {mv.vehicle}</div>
+      <div className="panel-title">
+        {mv.nAxles === 0 ? 'Carga de pedestres NBR 7188 — multidão de 5 kN/m²' : `Trem-tipo NBR 7188 — ${mv.vehicle}`}
+      </div>
       <div className="stat-grid">
         <div className="stat">
           <div className="k">CIV</div>
@@ -547,7 +572,7 @@ export function MovingTab({ model, results }: { model: BridgeModel; results: Bri
       <dl className="kv" style={{ marginTop: 10 }}>
         <dt>Eixos do veículo</dt>
         <dd>
-          {mv.nAxles} × {fmtAuto(mv.axleLoad)} kN a cada {fmtAuto(mv.axleSpacing)} m
+          {mv.nAxles === 0 ? 'sem veículo' : `${mv.nAxles} × ${fmtAuto(mv.axleLoad)} kN a cada ${fmtAuto(mv.axleSpacing)} m`}
         </dd>
         <dt>Carga distribuída</dt>
         <dd>{fmtAuto(mv.distributed)} kN/m</dd>
@@ -556,7 +581,9 @@ export function MovingTab({ model, results }: { model: BridgeModel; results: Bri
       </dl>
       {spec && (
         <div className="note" style={{ marginTop: 6 }}>
-          Valores já com os coeficientes de impacto. Carga por eixo descontada da distribuída sob o veículo.
+          {mv.nAxles === 0
+            ? 'Carga de multidão na posição mais desfavorável, sem coeficientes de impacto (CIV = CNF = CIA = 1).'
+            : 'Valores já com os coeficientes de impacto. Carga por eixo descontada da distribuída sob o veículo.'}
         </div>
       )}
 

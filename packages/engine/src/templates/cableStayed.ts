@@ -109,10 +109,34 @@ export function generateCableStayed(p: CableStayedParams): BridgeModel {
   const aEff = n > 1 ? Math.min(p.towerAnchorSpacing, Math.max(0.2, (zTopA - zLow) / (n - 1))) : 0
   const distMax = (a: Anchor): number =>
     Math.max(...anchors.filter((o) => o.tower === a.tower && o.side === a.side).map((o) => o.dist))
-  const anchorZ = (a: Anchor): number => {
+  const anchorZraw = (a: Anchor): number => {
     if (layout === 'fan') return zTopA
     if (layout === 'semi-fan') return zTopA - (n - 1 - a.k) * aEff
     return p.deckLevel + (zTopA - p.deckLevel) * (a.dist / distMax(a))
+  }
+  // Na harpa com vãos desiguais as ancoragens dos dois lados caem em cotas quase iguais, o que
+  // geraria barras de torre de milímetros (mal condicionadas). Cotas a menos de 0,6 m são
+  // unificadas na média do grupo.
+  const zSnap = new Map<number, number>()
+  {
+    const r3 = (z: number): number => Math.round(z * 1000) / 1000
+    const zsRaw = Array.from(new Set(anchors.map((a) => r3(anchorZraw(a))))).sort((x, y) => x - y)
+    let group: number[] = []
+    const flush = (): void => {
+      if (group.length === 0) return
+      const mean = r3(group.reduce((x, y) => x + y, 0) / group.length)
+      for (const z of group) zSnap.set(z, mean)
+      group = []
+    }
+    for (const z of zsRaw) {
+      if (group.length > 0 && z - group[0] > 0.6) flush()
+      group.push(z)
+    }
+    flush()
+  }
+  const anchorZ = (a: Anchor): number => {
+    const z = Math.round(anchorZraw(a) * 1000) / 1000
+    return zSnap.get(z) ?? z
   }
 
   // ---- tabuleiro(s)

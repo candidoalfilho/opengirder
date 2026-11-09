@@ -1,6 +1,13 @@
 import type { ReactNode } from 'react'
 import type { BridgeModel, BridgeResults } from '@opengirder/engine'
 import { CablesTab, ModesTab, MovingTab, ReactionsTab, SummaryTab } from './tabs'
+import { DataTab } from './features/DataTab'
+import { SectionsTab, sectionFailures } from './features/SectionsTab'
+import { StabilityTab, stabilityFailures } from './features/StabilityTab'
+import { PrestressTab, prestressVisible } from './features/PrestressTab'
+import { StagesTab } from './features/StagesTab'
+import { ActionsTab } from './features/ActionsTab'
+import { CombosTab } from './features/CombosTab'
 
 /**
  * Abas do painel direito. Para acrescentar uma aba: criar o componente em
@@ -43,5 +50,50 @@ export const FEATURE_TABS: FeatureTab[] = [
   },
   { key: 'moving', label: 'Carga móvel', render: (m, r) => <MovingTab model={m} results={r} /> },
   { key: 'reactions', label: 'Reações', flush: true, render: (_m, r) => <ReactionsTab results={r} /> },
+  {
+    key: 'actions',
+    label: 'Ações',
+    badge: (_m, r) => (r?.cases?.length ? { text: String(r.cases.length) } : undefined),
+    render: (m, r) => <ActionsTab model={m} results={r} />,
+  },
+  {
+    key: 'combos',
+    label: 'Combinações',
+    badge: (_m, r) => (r?.combos ? { text: String(r.combos.list.length) } : undefined),
+    render: (m, r) => <CombosTab model={m} results={r} />,
+  },
+  {
+    key: 'stages',
+    label: 'Fases',
+    visible: (m) => m.type === 'cable-stayed',
+    badge: (_m, r) => (r?.stages ? { text: String(r.stages.stages.length), err: r.stages.stages.some((s) => !s.converged) } : undefined),
+    render: (m, r) => <StagesTab model={m} results={r} />,
+  },
+  {
+    key: 'prestress',
+    label: 'Protensão',
+    visible: (m) => prestressVisible(m),
+    badge: (_m, r) => (r?.prestress?.ok === false ? { text: '!', err: true } : undefined),
+    render: (m, r) => <PrestressTab model={m} results={r} />,
+  },
+  {
+    key: 'stability',
+    label: 'Estabilidade',
+    badge: (_m, r) => {
+      const n = stabilityFailures(r)
+      return n ? { text: String(n), err: true } : undefined
+    },
+    render: (m, r) => <StabilityTab model={m} results={r} />,
+  },
+  {
+    key: 'sections',
+    label: 'Seções',
+    badge: (_m, r) => {
+      const f = sectionFailures(r)
+      return f ? { text: String(f), err: true } : undefined
+    },
+    render: (m, r) => <SectionsTab model={m} results={r} />,
+  },
+  { key: 'data', label: 'Dados', flush: true, render: (m) => <DataTab model={m} /> },
   // [abas:novas] — uma linha por aba nova, acima deste marcador
 ]

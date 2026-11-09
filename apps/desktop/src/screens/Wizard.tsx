@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { generateModel, validateModel, type BridgeModel, type TemplateParams } from '@opengirder/engine'
+import {
+  defaultBox,
+  generateModel,
+  sectionProperties,
+  validateGeometry,
+  validateModel,
+  type BridgeModel,
+  type TemplateParams,
+} from '@opengirder/engine'
 import { useStore, type ViewState } from '../store'
 import { fmtInt, numToInput, parseNum } from '../format'
 import { IconBack, LogoMark } from '../ui/icons'
@@ -77,10 +85,12 @@ function ListInput({
   value,
   onChange,
   onValidity,
+  allowEmpty,
 }: {
   value: number[] | undefined
   onChange: (v: number[]) => void
   onValidity: (ok: boolean) => void
+  allowEmpty?: boolean
 }) {
   const toText = (v: number[] | undefined) => (v ?? []).map((x) => numToInput(x)).join('; ')
   const [text, setText] = useState(toText(value))
@@ -110,13 +120,21 @@ function ListInput({
           .map((x) => x.trim())
           .filter(Boolean)
         const nums = parts.map(parseNum)
-        const ok = nums.length > 0 && nums.every((v) => Number.isFinite(v) && v > 0)
+        const ok = (allowEmpty || nums.length > 0) && nums.every((v) => Number.isFinite(v) && v > 0)
         setBad(!ok)
         onValidity(ok)
         if (ok) onChange(nums)
       }}
     />
   )
+}
+
+/** com a seção definida por geometria, A, Iz, Iy, J e altura do tabuleiro espelham o que ela dá */
+function mirrorGeometry(p: Params): Params {
+  const g = p?.deck?.geometry
+  if (!g || validateGeometry(g).length > 0) return p
+  const q = sectionProperties(g)
+  return { ...p, deck: { ...p.deck, A: q.A, Iz: q.Iz, Iy: q.Iy, J: q.J, depth: q.depth } }
 }
 
 function FieldView({
@@ -131,7 +149,12 @@ function FieldView({
   onValidity: (key: string, ok: boolean) => void
 }) {
   const kind = field.kind ?? 'number'
-  const raw = field.key === '__twin' ? !!params.twin : getPath(params, field.key)
+  const raw =
+    field.key === '__twin'
+      ? !!params.twin
+      : field.key === '__boxGeometry'
+        ? !!getPath(params, 'deck.geometry')
+        : getPath(params, field.key)
   const cls = `field ${field.wide ? 'wide' : ''}`
 
   if (kind === 'bool') {
@@ -174,6 +197,7 @@ function FieldView({
         value={raw as number[] | undefined}
         onChange={(v) => set(field.key, v)}
         onValidity={(ok) => onValidity(field.key, ok)}
+        allowEmpty={field.allowEmpty}
       />
     )
   } else {
@@ -271,7 +295,17 @@ export function Wizard() {
         else delete p.twin
         return normalize({ kind: prev.kind, params: p } as TemplateParams)
       }
-      return normalize({ kind: prev.kind, params: setPath(prev.params, key, value) } as TemplateParams)
+      if (key === '__boxGeometry') {
+        // liga/desliga a seção por geometria; ligada, A/I/J/altura passam a espelhar o caixão
+        const p = prev.params as Params
+        const geometry = value ? defaultBox(Number(p.deckWidth) || 12, Number(getPath(p, 'deck.depth')) || 2) : undefined
+        return normalize({ kind: prev.kind, params: mirrorGeometry(setPath(p, 'deck.geometry', geometry)) } as TemplateParams)
+      }
+      const next = setPath(prev.params, key, value)
+      return normalize({
+        kind: prev.kind,
+        params: key.startsWith('deck.geometry.') ? mirrorGeometry(next as Params) : next,
+      } as TemplateParams)
     })
   }
 

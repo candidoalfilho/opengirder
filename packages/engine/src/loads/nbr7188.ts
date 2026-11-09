@@ -6,11 +6,11 @@
  * Q = P·CIV·CNF·CIA  e  q = p·CIV·CNF·CIA
  */
 
-export type VehicleId = 'TB-450' | 'TB-240'
+export type VehicleId = 'TB-450' | 'TB-240' | 'Pedestres'
 
 export interface VehicleSpec {
   id: VehicleId
-  /** carga por roda P (kN) — 6 rodas, 3 eixos */
+  /** carga por roda P (kN) — 6 rodas, 3 eixos; 0 = só carga distribuída (passarelas) */
   wheelLoad: number
   /** carga distribuída p (kN/m²) */
   distributed: number
@@ -31,6 +31,13 @@ export const VEHICLES: Record<VehicleId, VehicleSpec> = {
   /** estradas vicinais municipais de uma faixa e obras particulares (item 5.1, nota) */
   'TB-240': {
     id: 'TB-240', wheelLoad: 40, distributed: 4, nAxles: 3, axleSpacing: 1.5, track: 2.0, width: 3.0, length: 6.0,
+  },
+  /**
+   * Passarelas (seção 6): carga uniformemente distribuída p = 5,0 kN/m² entre os guarda-corpos,
+   * na posição mais desfavorável, NÃO majorada por CIV, CNF ou CIA. Sem veículo.
+   */
+  Pedestres: {
+    id: 'Pedestres', wheelLoad: 0, distributed: 5, nAxles: 0, axleSpacing: 0, track: 0, width: 0, length: 0,
   },
 }
 

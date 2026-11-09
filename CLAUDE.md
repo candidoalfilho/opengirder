@@ -6,11 +6,11 @@ OpenGirder — análise de pontes (vigas, estaiadas, pênseis) com normas ABNT. 
 
 ```bash
 npm run dev                              # interface em http://localhost:5193
-npm test                                 # testes do motor (vitest)
+npm test                                 # testes do motor e da interface (vitest)
 npm run typecheck                        # tsc nos dois pacotes
 npm run build                            # typecheck + vite build
 npm run presets -w @opengirder/engine    # resumo numérico dos modelos de referência
-npm run sweep -w @opengirder/engine      # 20 variações de gabarito — rodar após mexer em form-finding ou geradores
+npm run sweep -w @opengirder/engine      # 27 variações de gabarito — rodar após mexer em form-finding ou geradores
 ```
 
 ## Arquitetura
@@ -19,7 +19,7 @@ npm run sweep -w @opengirder/engine      # 20 variações de gabarito — rodar 
 - `apps/desktop` — Tauri 2 + React 19 + three.js (R3F) + Zustand. A análise roda em `src/workers/analysis.worker.ts`.
 - Contrato entre os dois: `model/types.ts`, `analysis/types.ts`, `templates/types.ts` e `index.ts` do motor.
 
-Pipeline de `analyzeBridge`: form-finding → carga permanente não linear → modal → carga móvel → verificações. Com `sizeCables`, repete até o número de cordoalhas estabilizar.
+Pipeline de `analyzeBridge`: form-finding → carga permanente não linear → modal → carga móvel → verificação dos cabos → extensões (casos adicionais e protensão → combinações NBR 8681 → verificação de seções, flambagem, aerodinâmica, fases). Com `sizeCables`, repete até o número de cordoalhas estabilizar; as extensões só rodam no passe final.
 
 ## Como estender
 
@@ -43,6 +43,9 @@ Pipeline de `analyzeBridge`: form-finding → carga permanente não linear → m
 - **Form-finding só por deslocamento nulo**: mal condicionado junto a apoios que recalcam (estai com 10× a força, vizinhos frouxos). **Só por mínima energia de flexão**: zigue-zague de forças. O que funciona está documentado no cabeçalho de `formfinding/formFinding.ts`.
 - **Linha de influência nodal vale 0 sobre o apoio**; o limite pela esquerda e pela direita não. `loads/moving.ts` duplica os pontos de apoio.
 - **Catenária com H → 0** (pendural vertical): as fórmulas ingênuas cancelam. Usar as formas estáveis de `catenaryFlex`.
+- **Montantes curtos monolíticos em arco inferior** atraem momentos enormes do movimento relativo arco–tabuleiro: o gerador os faz pendulares abaixo de 10× a largura.
+- **Ancoragens de harpa em cotas quase iguais** dos dois lados da torre geravam barras de milímetros: cotas a menos de 0,6 m são unificadas.
+- **Lockfile gerado no macOS sem os pacotes opcionais das outras plataformas** (`@esbuild/*`): quebra o `npm ci` no CI. Regenerar o lock numa pasta sem `node_modules`.
 - Primeiro estai muito longe da torre (mais de ~2× o espaçamento) descarrega o segundo — é física, não bug.
 
 ## Regras
@@ -50,3 +53,5 @@ Pipeline de `analyzeBridge`: form-finding → carga permanente não linear → m
 - Não portar código de OpenSees, PGSuper nem de projetos GPL/AGPL (o projeto é MIT).
 - Propriedades de obras reais são estimativas: sempre dizer "inspirado em", nunca afirmar que reproduz o projeto.
 - Toda mudança no motor passa por `npm test` e `npm run sweep`.
+- Coeficientes de norma: citar item e edição no cabeçalho do arquivo; o que não foi conferido no texto oficial entra na lista de VALIDATION.md.
+- Publicação: push na `main` republica o site (GitHub Pages); tag `v*` gera os instaladores e o Release.

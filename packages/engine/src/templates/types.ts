@@ -3,6 +3,8 @@
  * Unidades: m, kN, MPa só onde indicado (materiais) — o gerador converte p/ kPa.
  */
 
+import type { SectionGeometry } from '../sections/geometry'
+
 export interface DeckSectionInput {
   /** área (m²) */
   A: number
@@ -19,6 +21,9 @@ export interface DeckSectionInput {
   /** raio de giração da massa em torno do eixo (m), p/ modos de torção.
    *  Padrão: massa uniforme na largura, √((b² + h²)/12) */
   massRadius?: number
+  /** geometria paramétrica da seção: quando presente, A, Iz, Iy, J, altura e as distâncias
+   *  às fibras extremas são calculadas dela (os campos acima ficam só como espelho) */
+  geometry?: SectionGeometry
 }
 
 export interface GirderBridgeParams {
@@ -39,6 +44,19 @@ export interface GirderBridgeParams {
   elementLength: number
   /** pilares engastados no tabuleiro (pórtico) ou sobre aparelhos de apoio */
   monolithic: boolean
+  /** protensão longitudinal do tabuleiro (pós-tração aderente), pré-dimensionada por
+   *  balanceamento de cargas — só p/ tabuleiro de concreto */
+  prestress?: {
+    enabled: boolean
+    /** fração da carga permanente balanceada no vão crítico; padrão 1,0 */
+    balance?: number
+    /** distância do centro do cabo resultante à face do concreto (m); padrão 0,15 */
+    cover?: number
+    /** área de cada cordoalha (m²); padrão 1,40e-4 (Ø15,2 mm) */
+    strandArea?: number
+    /** fptk das cordoalhas (MPa); padrão 1900 (CP 190 RB) */
+    strandFptk?: number
+  }
 }
 
 export interface CableStayedParams {
@@ -85,6 +103,8 @@ export interface CableStayedParams {
   towerShape?: 'mast' | 'X'
   /** torre em X: semi-afastamento das pernas na base e no topo (m) */
   xLegs?: { base: number; top: number }
+  /** carga móvel de projeto: 'Pedestres' p/ passarelas (padrão TB-450) */
+  liveLoad?: 'TB-450' | 'TB-240' | 'Pedestres'
   /** 2º tabuleiro curvo espelhado (y → −y), em outra cota: os dois passam sobrepostos sob a
    *  torre e se afastam em planta, formando um X. Exige planRadius > 0 e towers = 1. */
   twin?: { level2: number }
@@ -118,12 +138,73 @@ export interface SuspensionParams {
   subdivisions: number
 }
 
-export type TemplateKind = 'girder' | 'cable-stayed' | 'suspension'
+export interface ArchParams {
+  name: string
+  /** 'deck' = arco inferior (tabuleiro sobre montantes); 'through' = arco superior, tabuleiro
+   *  no nível das nascenças, suspenso por pendurais; 'half-through' = tabuleiro intermediário
+   *  (pendurais no trecho central, montantes junto às nascenças) */
+  layout: 'deck' | 'through' | 'half-through'
+  /** arco atirantado (bowstring): o tabuleiro é o tirante e os apoios não recebem empuxo.
+   *  Só vale p/ layout 'through' */
+  tied: boolean
+  /** vão do arco entre nascenças (m) */
+  span: number
+  /** flecha do eixo do arco (m) — típico vão/5 a vão/7 */
+  rise: number
+  /** forma do eixo: parábola, catenária ou funicular da carga permanente do próprio modelo */
+  shape: 'parabola' | 'catenary' | 'funicular'
+  /** nº de painéis (pendurais ou montantes = painéis − 1, por plano) */
+  panels: number
+  /** cota das nascenças do arco (m) */
+  springLevel: number
+  /** 'half-through': altura do tabuleiro acima das nascenças (m);
+   *  'deck': folga entre o fecho do arco e o eixo do tabuleiro (m, mín. 1) */
+  deckOffset: number
+  /** vinculação do arco nas nascenças (ignorado no arco atirantado, que nasce do tabuleiro) */
+  hinges: 'fixed' | 'two-hinged'
+  /** 1 arco no eixo ou 2 arcos laterais */
+  planes: 1 | 2
+  /** distância entre os planos dos arcos nas nascenças (m) */
+  archSpacing: number
+  /** inclinação dos arcos p/ dentro (graus) — "basket handle"; só arcos superiores */
+  inclinationDeg: number
+  /** travessas de contraventamento entre os dois arcos */
+  braced: boolean
+  arch: {
+    material: 'steel' | 'concrete'
+    fck: number
+    A: number
+    /** inércia no plano do arco (m⁴) */
+    I: number
+    /** inércia fora do plano (m⁴) */
+    Iout: number
+    J: number
+    /** altura (no plano) e largura da seção (m) */
+    depth: number
+    width: number
+  }
+  /** área de cada pendural (m²) e f_ptk (MPa) */
+  hangerArea: number
+  hangerFpk: number
+  /** montantes (pilaretes entre arco e tabuleiro) */
+  column: { A: number; I: number; J: number; width: number }
+  /** vãos de acesso de CADA lado, do arco p/ fora (m); vazio = sem acessos */
+  approachSpans: number[]
+  deckWidth: number
+  carriageway: number
+  deckMaterial: 'concrete' | 'steel' | 'composite'
+  fck: number
+  deck: DeckSectionInput
+  elementLength: number
+}
+
+export type TemplateKind = 'girder' | 'cable-stayed' | 'suspension' | 'arch'
 
 export type TemplateParams =
   | { kind: 'girder'; params: GirderBridgeParams }
   | { kind: 'cable-stayed'; params: CableStayedParams }
   | { kind: 'suspension'; params: SuspensionParams }
+  | { kind: 'arch'; params: ArchParams }
 
 export interface Preset {
   id: string
