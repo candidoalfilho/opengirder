@@ -343,6 +343,8 @@ export const useStore = create<State>((set, get) => {
       if (prev?.meta?.reference?.length && !model.meta?.reference?.length && prev.template?.kind === t.kind) {
         model.meta = { ...model.meta, reference: prev.meta.reference }
       }
+      // as ações do local (vento, temperatura, sismo) são do projeto, não do gabarito: seguem valendo
+      if (prev?.site && !model.site) model.site = prev.site
       const path = get().filePath
       freshModel(model, path, true)
     },

@@ -69,9 +69,14 @@ jobs:
         shell: bash
         run: |
           cd apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle
-          find . -type f \( -name '*.dmg' -o -name '*setup.exe' -o -name '*.AppImage' -o -name '*.deb' \) \
-            -exec shasum -a 256 {} \; > SHA256SUMS-${{ matrix.target }}.txt
-          cat SHA256SUMS-${{ matrix.target }}.txt
+          out=SHA256SUMS-${{ matrix.target }}.txt
+          : > "$out"
+          for f in dmg/*.dmg nsis/*.exe appimage/*.AppImage deb/*.deb; do
+            [ -f "$f" ] || continue
+            (sha256sum "$f" 2>/dev/null || shasum -a 256 "$f") >> "$out"
+          done
+          cat "$out"
+          test -s "$out"
 
       - name: guardar instaladores (execução manual)
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
