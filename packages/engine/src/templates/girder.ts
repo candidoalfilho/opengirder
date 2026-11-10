@@ -2,6 +2,7 @@ import type { BridgeModel, Section } from '../model/types'
 import type { GirderBridgeParams } from './types'
 import { designTendon } from '../prestress/design'
 import { autoDesignPrestress } from '../prestress/autodesign'
+import { generateGrillage } from './grillage'
 import { Builder, concrete, deckMaterial, deckSection, rigidMaterial, rigidSection, stations } from './builder'
 
 /**
@@ -10,6 +11,8 @@ import { Builder, concrete, deckMaterial, deckSection, rigidMaterial, rigidSecti
  * encontros e pilares. Pilares monolíticos entram no modelo como pórtico.
  */
 export function generateGirder(p: GirderBridgeParams): BridgeModel {
+  // tabuleiro em grelha (longarinas + faixas de laje + transversinas): templates/grillage.ts
+  if (p.deckModel === 'grillage') return generateGrillage(p)
   const b = new Builder()
   const z = p.pierHeight > 0 ? p.pierHeight : 8
   const spans = p.spans.filter((s) => s > 0)

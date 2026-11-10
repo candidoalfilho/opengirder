@@ -1,6 +1,6 @@
 # Validação
 
-Tudo aqui é verificado automaticamente por `npm test` (122 testes do motor em `packages/engine/test` e 43 da interface em `apps/desktop/test`). Os números abaixo são os que os testes conferem.
+Tudo aqui é verificado automaticamente por `npm test` (145 testes do motor em `packages/engine/test` e 43 da interface em `apps/desktop/test`). Os números abaixo são os que os testes conferem.
 
 ## 1. Elementos, contra solução fechada
 
@@ -49,6 +49,16 @@ Geometria global das fontes oficiais (vãos de 343 + 1 280 + 343 m, torres de 22
 Períodos de referência: modelo ADINA do retrofit sísmico (HDR, 2013), com 11 420 nós.
 
 **O modo torcional não fecha.** O tabuleiro aqui é uma barra com torção de Saint-Venant; a treliça real distorce e é bem mais flexível à torção do que qualquer seção fechada equivalente. Para torção de tabuleiros treliçados ou abertos, este modelo de espinha não é suficiente — precisa do tabuleiro em grelha ou casca (está no roadmap). Os modos transversal, longitudinal e verticais, governados pela rigidez geométrica dos cabos, fecham.
+
+Sensibilidade do 1º modo torcional (os modos verticais e o transversal não mudam):
+
+| J (m⁴) | Raio de giração da massa (m) | 1º torcional | Contra 8,98 s |
+|---|---|---|---|
+| 1,0 | 11,2 (modelo atual) | 6,68 s | −26% |
+| 0,3 | 11,2 | 7,98 s | −11% |
+| 0,05 | 11,2 | 8,66 s | −4% |
+
+A estimativa de Bredt para a treliça contraventada dá J entre 0,3 e 1 m⁴. O modelo mantém J = 1,0 para não ajustar um dado estimado ao resultado; modelar o tabuleiro como grelha não muda esse número.
 
 ## 4. Estaiada de São Paulo, Rio Negro e três vãos
 
@@ -124,11 +134,40 @@ Fatores críticos de flambagem dos modelos de referência (sobre a carga permane
 | Balanço com um estai, fase sem estai | δ = wL⁴/8EI, M = wL²/2 | exato |
 | Fases construtivas, última fase | reproduz o estado final de projeto | trações iguais (5·10⁻⁷ %) |
 
+## Efeitos diferidos (fluência e retração)
+
+Modelo do Anexo A da NBR 6118 (`timedep/nbr6118a.ts`) e método do módulo efetivo ajustado pela idade, χ = 0,8 (`timedep/aaem.ts`).
+
+| Verificação | Referência | Resultado |
+|---|---|---|
+| Pilar livre sob carga constante | encurtamento (1 + φ)·NL/EA + εcs·L | exato |
+| Barra biengastada com retração | N = εcs·EA/(1 + χφ) | exato |
+| Concreto em paralelo com aço | transferência de carga pela fórmula fechada | exato |
+| Viga contínua homogênea | flechas × φ, sem redistribuição de momentos | ±1%; ΔM < 0,5% |
+| Balanço numa fase construtiva | ponta desce Δφ·wL⁴/8EI | exato |
+| Coeficientes φ e εcs | Tabela 8.2 da NBR 6118 (valores de memória, umidade de 40 a 75%) | retração até 5%, fluência até 10% |
+
+Em t = ∞ (umidade de 70%, carga aos 28 dias): na Ponte Rio Negro o tabuleiro desce 253 mm e as trações dos estais variam de −17,7% a +2,7%; em São Paulo, 121 mm e −13,4% a +2,9%. Nenhum estai fica frouxo e as verificações continuam atendidas. As expressões do Anexo A foram implementadas de bibliografia e não conferidas no texto oficial.
+
+## Tabuleiro em grelha
+
+Vigas múltiplas modeladas como grelha (`templates/grillage.ts`): longarinas em seção T, faixas de laje em cada estaca e transversinas; a carga móvel é repartida entre as longarinas vizinhas pela regra da alavanca (`loads/transverse.ts`) e o restante da repartição sai do próprio modelo.
+
+| Verificação | Referência | Resultado |
+|---|---|---|
+| Carga permanente, 5 longarinas, vão de 30 m | soma dos momentos das longarinas = momento da viga única; Σ reações = peso | 0,02% e 0,1% |
+| Flecha média das longarinas | viga única com a soma das inércias | dentro de 3% |
+| Carga concentrada excêntrica, transversina rígida no meio do vão | Courbon/Engesser: 0,60 / 0,40 / 0,20 / 0 / −0,20 | 0,600 / 0,400 / 0,199 / 0,000 / −0,199 |
+| Idem, sem transversina no vão e laje de 12 cm | a longarina carregada fica com mais que Courbon (0,60) | mais de 0,75 |
+| TB-450, longarina de borda, vão de 30 m | Courbon com as faixas desfavoráveis e o veículo a 4,6 m do eixo: 3 640 kN·m | 3 459 kN·m (−5%), 1,53 × a média |
+
+A transversina de apoio rígida à torção engasta parcialmente as longarinas umas nas outras e reduz a redistribuição de Courbon (de 0,60 para 0,42 na borda com uma nervura de 1,5 × 4 m); por isso a comparação com Courbon usa transversinas sem rigidez à torção. A grelha não representa a flexão local da laje sob a roda, o efeito de casca, a largura colaborante variável nem os balanços da laje (o peso deles vai para a longarina de borda); a protensão automática ainda só existe no modelo de espinha.
+
 ## 10. Robustez
 
-`npm run sweep -w @opengirder/engine` roda 27 variações de gabarito (um e dois planos, harpa, leque, vãos desiguais, tabuleiro curvo, torre inclinada, torre em X, aço e concreto, pênsil com várias flechas, vigas com e sem pilares, sete arcos). Vinte e seis convergem com todos os cabos aprovados; a outra — pênsil com vão lateral de 60 m — reprova o cabo principal no trecho íngreme, que é o resultado correto para a área informada.
+`npm run sweep -w @opengirder/engine` roda 30 variações de gabarito (um e dois planos, harpa, leque, vãos desiguais, tabuleiro curvo, torre inclinada, torre em X, aço e concreto, pênsil com várias flechas, vigas com e sem pilares, sete arcos, três grelhas). Vinte e nove convergem com todos os cabos aprovados; a outra — pênsil com vão lateral de 60 m — reprova o cabo principal no trecho íngreme, que é o resultado correto para a área informada.
 
-A interface é exercitada num navegador headless: os nove modelos prontos rodam e todas as abas renderizam sem erro de console.
+A interface é exercitada num navegador headless: os dez modelos prontos rodam e todas as abas renderizam sem erro de console.
 
 **Modelo feito à mão.** Uma estaiada montada só com as operações do editor, sem assistente (tabuleiro de 2 × 60 m dividido a cada 10 m, torre de 60 m, 5 estais por lado gerados, pista automática), é analisada em `packages/engine/test/scratch.test.ts` e em `apps/desktop/test`: converge, nenhum estai frouxo, tabuleiro a menos de 30 mm do greide, todos os estais aprovados após o dimensionamento, em leque, semi-leque e harpa. No navegador, a partir do modelo em branco, uma estaiada de 2 × 120 m com torre de 85 m e 20 estais gerados roda em 0,14 s com o mesmo resultado (tabuleiro a 5 mm do greide).
 
@@ -139,16 +178,31 @@ A interface é exercitada num navegador headless: os nove modelos prontos rodam 
 - Limites dos cabos: 0,45·Fu em serviço e φ = 0,65 no ELU (fib Bulletin 30, PTI DC45.1) — a ABNT não tem norma de estais.
 - As envoltórias das combinações são por esforço, não concomitantes (exceto a normal associada ao momento extremo). No ELU, γg multiplica o esforço permanente, não a carga.
 - Vento só transversal, sem sustentação nem momento aerodinâmico; o arrasto do tabuleiro segue a curva da EN 1991-1-4, porque o capítulo de pontes da NBR 6123:2023 não está implementado.
-- Fases construtivas sem fluência, retração nem retensionamento: os comprimentos de fabricação são os do estado final.
+- Fases construtivas: o estado de cada fase vem da análise regressiva elástica (comprimentos de fabricação = estado final); a fluência e a retração entram como incremento por fase somado a esse estado, sem retensionamento.
 - Verificação de seções sobre o modelo de espinha: sem geometria detalhada, mesa e almas são deduzidas da área e o resultado é indicativo. Efeitos locais de 2ª ordem em pilares (NBR 6118, 15.8), flambagem local e lateral do aço não são verificados.
 - A triagem aerodinâmica usa fatores de forma indicativos e não substitui ensaio em túnel de vento.
 
-## Coeficientes ainda não conferidos no texto das normas
+## Conferência normativa
 
-Os valores abaixo foram implementados a partir de bibliografia e conferidos entre si, mas não contra o texto oficial da ABNT. Antes de usar em projeto, confira:
+Os textos oficiais da ABNT são pagos e não foram consultados. Cada coeficiente foi conferido em **fontes públicas** (apostilas de universidades, teses, publicações do DNIT, material da ABECE): duas ou mais fontes independentes sempre que possível. O detalhamento, com o valor no código, a situação e as fontes de cada item, está em [docs/normas.md](docs/normas.md).
 
-- NBR 8681: fatores ψ0, ψ1, ψ2 de pontes rodoviárias, vento e temperatura (Tabela 6).
-- NBR 6123: parâmetros b, p e Fr do fator S2; S3 = 1,10 como padrão.
-- NBR 6118: limites de σpi na pós-tração, k = 0,01·μ, perdas progressivas (9.6.3.4.2), ψ1000 (Tabela 8.4), α do fct,f e ηc para fck > 40 MPa.
-- NBR 15421: tabela de Ca e Cv e ramos do espectro (valores da edição de 2006).
-- NBR 7188: carga de multidão de 5 kN/m² em passarelas.
+| Norma | Conferido em 2+ fontes públicas | Conferido em 1 fonte | Não confirmado |
+|---|---|---|---|
+| NBR 7188:2013 (carga móvel) | TB-450, TB-240, CIV, definição de Liv, CNF, CIA, frenagem Hf, multidão de passarelas | manutenção do TB-450 na edição de 2024 | demais coeficientes da edição de 2024 |
+| NBR 8681:2003 (combinações) | γg, γq, γε, ψ0/ψ1/ψ2 de pontes rodoviárias, passarelas, vento e temperatura | ψ2 = 0 admitido com sismo | γp da protensão; edição de 2025 |
+| NBR 6123 (vento) | q = 0,613·Vk², tabela de b, p e Fr do S2, classes A/B/C, S3 do grupo 1 (2023) | Re = 70 000·Vk·d; S1 e S2 mantidos em 2023 | arrasto do tabuleiro, de torres e de cabos; capítulo de pontes de 2023 (não implementado) |
+| NBR 6118 (concreto) | Eci, fct,m (inclusive a expressão de 2023 para fck > 50), ηc de 2023, cortante (VRd2, αv2, Vc0) | Ecs (αi), fctk,inf, εc2 e εcu, γc, γs, Es, dilatação térmica, variações de temperatura | Tabela 17.3, x/d, λ e αc acima de C50, estribo mínimo, torção, pilares |
+| NBR 6118 (protensão) | σpi de 2014, k = 0,01·μ, ψ1000 a 0,6 e 0,7·fptk, relaxação 2,5·ψ1000 | atrito μ, ato da protensão, níveis de protensão | σpi de 2023 (mudou de formato), fct,f, extremos da Tabela 8.4, perdas progressivas simplificadas |
+| NBR 15421:2006 (sismo) | zonas e ag, ramos do espectro | Ca e Cv, regra Cd/R dos deslocamentos | aceleração vertical, regra 100% + 30%, tabela de 2023 |
+| NBR 8800 (aço) | — | γa1 = 1,10 | E, G e dilatação térmica |
+| Estais, aerodinâmica e passarelas | — | — | limites 0,45·Fu e 0,65·Fu, extradorso, Selberg, Strouhal, faixas de frequência do passo |
+
+**Corrigido nesta conferência** (antes → depois):
+
+- Fator S3 padrão do vento: 1,10 → 1,11 (NBR 6123:2023, grupo 1, que passou a citar pontes). A pressão de vento dos modelos sobe 1,8%.
+- Resistência média à tração do concreto acima de C50: 2,12·ln(1 + 0,11·fck) → 2,12·ln[1 + 0,1·(fck + 8)] (NBR 6118:2023).
+- Carga móvel de passarelas nas combinações: ψ de pontes rodoviárias (0,7 / 0,5 / 0,3) → ψ de passarelas (0,6 / 0,4 / 0,3).
+- Passarelas deixam de gerar o caso de frenagem, que é ação de veículos rodoviários.
+- Deslocamentos do sismo: elásticos × I → elásticos (Cd/R com Cd = R).
+
+**O que continua dependendo do texto oficial:** as edições novas ainda não lidas (NBR 7188:2024, NBR 8681:2025, capítulo de pontes da NBR 6123:2023, NBR 15421:2023, emenda de 2026 da NBR 6118), os gradientes térmicos da NBR 7187:2021 e as recomendações internacionais de estais (PTI DC45.1, fib Bulletin 30, SETRA), que são pagas ou não foram localizadas.

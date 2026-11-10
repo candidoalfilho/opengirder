@@ -1,6 +1,6 @@
 [package]
 name = "opengirder"
-version = "0.3.0"
+version = "0.4.0"
 description = "OpenGirder — Análise de pontes (vigas, arcos, estaiadas e pênseis)"
 authors = ["Cândido Alfredo"]
 edition = "2021"

@@ -23,6 +23,8 @@ import { solveModal } from './analysis/modal'
 import { findForm } from './formfinding/formFinding'
 import { solveMovingLoad } from './loads/moving'
 import { LinearSolver } from './analysis/linear'
+import { runLongTerm } from './timedep/longterm'
+import { runStagesInTime } from './timedep/stagesTime'
 import type { AnalysisContext } from './analysis/context'
 import { runSectionChecks } from './checks/sections'
 import { runPedestrian } from './checks/pedestrian'
@@ -239,6 +241,7 @@ function runAnalysis(model: BridgeModel, opts: AnalysisOptions): BridgeResults {
     guard('Ações (temperatura, vento, frenagem)', () => runActions(ctx))
     guard('Protensão do tabuleiro', () => runPrestress(ctx))
     guard('Análise sísmica', () => runSeismic(ctx))
+    guard('Efeitos diferidos (fluência e retração)', () => runLongTerm(ctx))
     // [ext:casos] casos de carga adicionais — cada módulo acrescenta em ctx.cases
 
     if (ctx.cases.length > 0) res.cases = ctx.cases
@@ -255,7 +258,7 @@ function runAnalysis(model: BridgeModel, opts: AnalysisOptions): BridgeResults {
       guard('Análise das fases construtivas', () => {
         progress('Fases construtivas', 0.97)
         const so = typeof opts.stages === 'object' ? opts.stages : {}
-        const st = runStages(model, res.cableL0, {
+        const st = runStagesInTime(model, res.cableL0, {
           ...so, nonlinear,
           onProgress: (f) => progress('Fases construtivas', 0.97 + 0.03 * f),
         })

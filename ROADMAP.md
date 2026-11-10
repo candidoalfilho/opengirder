@@ -2,6 +2,12 @@
 
 ## Feito
 
+### v0.4
+
+- Tabuleiro em grelha para pontes de vigas múltiplas (longarinas, faixas de laje, transversinas), com repartição transversal da carga móvel
+- Fluência e retração (NBR 6118, Anexo A): efeitos diferidos na obra pronta, nas perdas de protensão e por fase construtiva
+- Conferência dos coeficientes de norma em fontes públicas, com cinco correções (docs/normas.md)
+
 ### v0.3
 
 - Editor gráfico: modelo em branco, desenho de nós, barras e cabos no 3D, seleção múltipla, mover, propriedades da seleção
@@ -32,9 +38,9 @@
 
 ## Próximo
 
-1. **Tabuleiro em grelha** — distribuição transversal (vigas múltiplas, lajes), torção de seções abertas e treliçadas; fecha o modo torcional da Golden Gate
-2. **Fluência e retração nas fases construtivas** — análise progressiva no tempo, retensionamento de estais, balanços sucessivos de vigas
-3. **Conferência normativa** — revisar cada coeficiente contra o texto das normas (lista em VALIDATION.md) e implementar o capítulo de pontes da NBR 6123:2023
+1. **Grelha, 2ª etapa** — duas vigas de borda em estaiadas e pênseis, protensão por longarina, laje ortotrópica e elementos de casca; calibrar J e o raio de giração da Golden Gate (o modo torcional depende desses dois parâmetros, não da topologia)
+2. **Análise progressiva no tempo** — fases com redistribuição acumulada, retensionamento de estais, balanços sucessivos de vigas, relaxação dos estais
+3. **Normas, 2ª etapa** — conferir no texto oficial o que ficou só em fonte pública; incorporar NBR 7188:2024, NBR 8681:2025, NBR 15421:2023 e o capítulo de pontes da NBR 6123:2023
 4. **Verificações completas** — fadiga, fissuração, efeitos locais de 2ª ordem em pilares, flambagem local e lateral do aço (NBR 8800, NBR 16694)
 5. **Protensão por tramos** — vários cabos por seção, emendas, protensão externa e de estais extradorso
 6. **Infraestrutura** — aparelhos de apoio, encontros, fundações com molas de solo

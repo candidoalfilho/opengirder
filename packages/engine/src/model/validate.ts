@@ -49,6 +49,10 @@ export function validateModel(model: BridgeModel): string[] {
   for (const l of model.lanes) {
     if (l.nodes.some((id) => !pos.has(id))) errors.push(`Faixa "${l.name}" referencia nó inexistente.`)
     if (!(l.width > 0)) errors.push(`Faixa "${l.name}": largura deve ser positiva.`)
+    for (const ln of l.lines ?? []) {
+      if (ln.nodes.length !== l.nodes.length) errors.push(`Faixa "${l.name}": cada linha de carga precisa de um nó por estaca.`)
+      if (ln.nodes.some((id) => !pos.has(id))) errors.push(`Faixa "${l.name}": linha de carga referencia nó inexistente.`)
+    }
   }
   return Array.from(new Set(errors)).slice(0, 50)
 }

@@ -23,6 +23,7 @@ import type { BridgeResults, EnvForces, FrameForces, LimitState, PrestressAtFram
 import type { LinearState } from '../analysis/linear'
 import type { PrestressCheck, PrestressSection, Tendon, TendonData, TendonResult, TendonStress } from './types'
 import { tendonData } from './types'
+import { annexAForFrame } from '../timedep/params'
 import { type TendonProfile, buildProfile } from './profile'
 import { elasticShorteningLoss, immediateLosses, progressiveLoss } from './losses'
 import { type TendonPath, addEquivalentLoads, alongPath, segActive, tendonPath } from './equivalent'
@@ -112,6 +113,14 @@ export function runPrestress(ctx: AnalysisContext): void {
       continue
     }
     const { sec, swRatio } = sectionOf(ctx, path.segs[first].frame)
+    // φ e εcs não informados no cabo: valores do Anexo A da NBR 6118 p/ a seção do tabuleiro
+    // (umidade, idade e cimento de `model.site.longTerm`); com os efeitos diferidos desligados
+    // valem os padrões de TENDON_DEFAULTS
+    const annexA = annexAForFrame(ctx.model, ctx.sys.frames[path.segs[first].frame].id)
+    if (annexA) {
+      if (tendon.phi === undefined) td.phi = annexA.phi
+      if (tendon.epsCs === undefined) td.epsCs = annexA.epsCs
+    }
     const n = path.s.length
     const active = path.s.map((_, k) => (k > 0 && segActive(path, profile, k - 1)) || (k < n - 1 && segActive(path, profile, k)))
     const idx = active.map((a, k) => (a ? k : -1)).filter((k) => k >= 0)

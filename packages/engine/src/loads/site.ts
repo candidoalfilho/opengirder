@@ -8,12 +8,13 @@
  *    elementos com menor dimensão ≤ 50 cm); gradiente de 10 °C entre as faces do tabuleiro de
  *    concreto e 15 °C em tabuleiros de aço ou mistos; cabos ±10 °C em relação à estrutura
  *    (cabos respondem mais rápido à insolação — prática de projeto de estaiadas);
- *  - vento: V0 = 35 m/s, S1 = 1,0, categoria II, S3 = 1,10 (obra essencial ao socorro após
- *    tempestade — NBR 6123, Tabela 3, grupo 1);
+ *  - vento: V0 = 35 m/s, S1 = 1,0, categoria II, S3 = 1,11 (NBR 6123:2023, grupo 1, que passou
+ *    a citar pontes rodoviárias e ferroviárias; na edição de 1988 o grupo 1 valia 1,10);
  *  - frenagem ligada; sismo desligado (NBR 15421, zona 0 dispensa verificação).
  */
 
 import type { BridgeModel, SiteActions } from '../model/types'
+import { type LongTermParams, resolveLongTerm } from '../timedep/params'
 
 type On<T> = Exclude<T, false | undefined>
 
@@ -22,6 +23,8 @@ export interface ResolvedSite {
   wind: On<SiteActions['wind']> | false
   braking: boolean
   seismic: On<SiteActions['seismic']> | false
+  /** fluência e retração (timedep/params.ts); false = desligado ou modelo sem concreto */
+  longTerm: LongTermParams | false
 }
 
 export const DEFAULT_SITE: {
@@ -31,7 +34,7 @@ export const DEFAULT_SITE: {
   seismic: On<SiteActions['seismic']>
 } = {
   temperature: { uniform: 15, gradient: 10, cables: 10 },
-  wind: { V0: 35, S1: 1, category: 2, S3: 1.1 },
+  wind: { V0: 35, S1: 1, category: 2, S3: 1.11 },
   braking: true,
   /** valores usados quando o sismo é ligado sem parâmetros (zona 1, terreno C) */
   seismic: { ag: 0.05, soil: 'C', R: 1.5, I: 1.25 },
@@ -74,5 +77,5 @@ export function resolveSite(model: BridgeModel): ResolvedSite {
       I: num(s.seismic.I, DEFAULT_SITE.seismic.I),
     }
   }
-  return { temperature, wind, braking: s.braking !== false, seismic }
+  return { temperature, wind, braking: s.braking !== false, seismic, longTerm: resolveLongTerm(model) }
 }

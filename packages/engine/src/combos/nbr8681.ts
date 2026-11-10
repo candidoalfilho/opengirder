@@ -1,13 +1,16 @@
 /**
  * Combinações de ações — ABNT NBR 8681 (Ações e segurança nas estruturas).
  *
- * Coeficientes (pontes rodoviárias):
+ * Coeficientes (edição de 2003, conferidos em fontes públicas — docs/normas.md; a edição de
+ * 2025 não foi conferida):
  *  - permanentes agrupadas, "pontes em geral" (Tabela 2): γg = 1,35 desfavorável / 1,0 favorável;
- *    excepcional 1,15 / 1,0;
+ *    excepcional 1,15 / 1,0. "Grandes pontes" (peso próprio > 75 % das permanentes) poderiam
+ *    usar 1,30 / 1,10; aqui vale sempre o valor de pontes em geral, a favor da segurança;
  *  - protensão: γp = 1,2 desfavorável / 0,9 favorável no ELU; 1,0 nos ELS;
  *  - variáveis em separado (Tabela 4): carga móvel γq = 1,5; vento 1,4; temperatura γε = 1,2;
  *  - fatores de combinação e redução (Tabela 6):
  *        carga móvel de pontes rodoviárias  ψ0 = 0,7  ψ1 = 0,5  ψ2 = 0,3
+ *        carga móvel de passarelas          ψ0 = 0,6  ψ1 = 0,4  ψ2 = 0,3
  *        vento                              ψ0 = 0,6  ψ1 = 0,3  ψ2 = 0
  *        temperatura                        ψ0 = 0,6  ψ1 = 0,5  ψ2 = 0,3
  *
@@ -64,8 +67,10 @@ export const GAMMA = {
   settlement: 1.2,
 }
 
-export const PSI: Record<'moving' | 'wind' | 'temperature' | 'other', [number, number, number]> = {
+export const PSI: Record<'moving' | 'pedestrian' | 'wind' | 'temperature' | 'other', [number, number, number]> = {
   moving: [0.7, 0.5, 0.3],
+  /** passarelas de pedestres (Tabela 6) — usado quando a carga móvel é a multidão */
+  pedestrian: [0.6, 0.4, 0.3],
   wind: [0.6, 0.3, 0],
   temperature: [0.6, 0.5, 0.3],
   other: [0.7, 0.6, 0.4],
@@ -257,7 +262,8 @@ export function runCombinations(ctx: AnalysisContext): void {
     return v
   }
   const prestress = cases.filter((c) => c.kind === 'prestress').map((c) => ({ id: c.id, v: noUz(vec.get(c.id)!) }))
-  const settle = cases.filter((c) => c.kind === 'settlement').map((c) => ({ id: c.id, v: noUz(vec.get(c.id)!), both: c.sign === 'both' }))
+  // fluência e retração ('creep') são ações permanentes indiretas, como os recalques
+  const settle = cases.filter((c) => c.kind === 'settlement' || c.kind === 'creep').map((c) => ({ id: c.id, v: noUz(vec.get(c.id)!), both: c.sign === 'both' }))
 
   // ---- famílias de ações variáveis
   const mv = res.moving
@@ -359,7 +365,7 @@ export function runCombinations(ctx: AnalysisContext): void {
   const gw = GAMMA.wind
   const gt = GAMMA.temperature
   const go = GAMMA.other
-  const [q0, q1, q2] = PSI.moving
+  const [q0, q1, q2] = res.moving?.vehicle === 'Pedestres' ? PSI.pedestrian : PSI.moving
   const [w0, w1, w2] = PSI.wind
   const [t0, t1, t2] = PSI.temperature
   const [o0, o1, o2] = PSI.other

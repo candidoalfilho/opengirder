@@ -8,8 +8,13 @@
  * obra (A ≤ 20 m, B ≤ 50 m, C > 50 m). z é a cota do meio do elemento acima do ponto mais
  * baixo do modelo, com mínimo de 10 m (o modelo não conhece o nível do terreno/água).
  *
+ * Os parâmetros b, p e Fr são os da edição de 1988, conferidos em fontes públicas; a edição
+ * de 2023 manteve o procedimento de S1 e S2 e mudou S3 (grupo 1: 1,10 → 1,11, agora citando
+ * pontes) — ver docs/normas.md.
+ *
  * Coeficientes de arrasto adotados (a NBR 6123:1988 não traz tabuleiros de ponte; a revisão
- * de 2023 ganhou um capítulo próprio, item 11.3, que NÃO está implementado aqui):
+ * de 2023 ganhou um capítulo próprio, item 11, cujas expressões de Cx e Cz só aparecem em
+ * figuras nas fontes públicas consultadas e por isso NÃO está implementado aqui):
  *  - tabuleiro: Ca = 2,5 − 0,3·(B/d), limitado a [1,3; 2,4], referido à altura exposta d
  *    (EN 1991-1-4, Fig. 8.3). d = altura da seção + 1,0 m de barreiras (ponte descarregada)
  *    ou + 2,0 m de veículos (ponte carregada — NB-2/NBR 7187 e EN 1991-1-4 8.3.1(5));
@@ -132,9 +137,12 @@ export function windCases(ctx: AnalysisContext, w: Exclude<ResolvedSite['wind'],
       const q = kq * dynamicPressure(V)
       let fy: number
       if (f.group === 'deck') {
+        // grelha: a força do tabuleiro vai só p/ as longarinas de borda (windShare)
+        const share = sec.windShare ?? 1
+        if (!(share > 0)) return
         const d = (sec.depth ?? 0) + (loaded ? VEHICLE_HEIGHT : BARRIER_HEIGHT)
-        const Ca = deckDrag(sec.width ?? 0, d)
-        fy = q * Ca * d * sin2
+        const Ca = deckDrag(sec.windWidth ?? sec.width ?? 0, d)
+        fy = q * Ca * d * sin2 * share
         deckV += V * f.L0
         deckQ += q * f.L0
         deckCa += Ca * f.L0

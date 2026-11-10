@@ -336,3 +336,92 @@ export const secFases: ReportSection = {
     return out.join('')
   },
 }
+
+/* ------------------------------------------------------------------ efeitos diferidos */
+
+const ageLabel = (d: number): string => (d >= 9000 ? 't∞' : d >= 548 ? `${n(d / 365, 0)} anos` : d >= 300 ? '1 ano' : `${ni(d)} dias`)
+
+export const secDiferidos: ReportSection = {
+  key: 'diferidos',
+  title: 'Efeitos diferidos — fluência e retração',
+  enabled: (_m, r) => !!r.longTerm,
+  render: (_m, r, ctx) => {
+    const lt = r.longTerm!
+    const cs = r.cases?.find((c) => c.id === lt.caseId)
+    const out: string[] = []
+    out.push(
+      p(
+        'Fluência e retração do concreto pelo Anexo A da NBR 6118, com a espessura fictícia de cada seção. Os efeitos na estrutura ' +
+          `são calculados pelo método do módulo efetivo ajustado pela idade (χ = ${n(lt.params.chi, 1)}): de t0 a cada idade, as barras de ` +
+          'concreto recebem a deformação livre φ·σ/E + εcs sob os esforços permanentes' + (r.prestress ? ' e de protensão' : '') +
+          ' e a estrutura responde com o módulo E/(1 + χ·φ). Aço e cabos não fluem. O estado em t∞ entra nas combinações como ação ' +
+          'permanente indireta (caso CS: γ = 1,2 quando desfavorável e 0 quando favorável).',
+      ),
+    )
+    out.push(ctx.h('Parâmetros'))
+    out.push(
+      kv([
+        ['Umidade relativa do ambiente', `${n(lt.params.humidity, 0)} %`],
+        ['Idade do concreto no carregamento t0', `${ni(lt.params.t0)} dias`],
+        ['Idade final de referência', `${ni(lt.params.tInf)} dias`],
+        ['Cimento', esc(lt.params.cement)],
+        ['Abatimento', `${esc(lt.params.slump)} cm`],
+        ['Temperatura média', `${n(lt.params.temperature, 0)} °C`],
+      ]),
+    )
+    out.push(
+      ctx.tbl(
+        'Coeficientes de fluência e retração por seção',
+        [{ label: 'Seção', left: true }, 'fck (MPa)', 'h fic (m)', 'φ(t∞, t0)', 'εcs(t∞, t0) (‰)', 'Barras'],
+        lt.sections.map((s) => [s.name + (s.approx ? ' *' : ''), n(s.fck / 1000, 0), n(s.hfic, 2), n(s.phi, 2), n(s.epsCs * 1000, 3), ni(s.nFrames)]),
+      ),
+    )
+    if (lt.sections.some((s) => s.approx)) out.push(note('* espessura fictícia estimada pela largura e altura da seção (sem geometria detalhada).'))
+    out.push(ctx.h('Evolução na obra pronta'))
+    const hasCables = (cs?.cables.length ?? 0) > 0
+    out.push(
+      ctx.tbl(
+        'Incrementos em relação ao estado em t0',
+        [{ label: 'Idade', left: true }, 'φ', 'εcs (‰)', 'Tabuleiro (mm)', 'Torre/pilar (mm)', ...(hasCables ? ['ΔT cabos mín / máx (kN)'] : [])],
+        lt.instants.map((i) => [
+          ageLabel(i.t), n(i.phi, 2), n(i.epsCs * 1000, 3), n(i.uzDeck * 1000, 1), n(i.uzTower * 1000, 1),
+          ...(hasCables ? [`${ni(i.dT[0])} / ${ni(i.dT[1])}`] : []),
+        ]),
+      ),
+    )
+    out.push(
+      ctx.fig(
+        lineChartSvg({
+          series: [{ label: 'Maior deslocamento vertical do tabuleiro (mm)', x: lt.instants.map((i) => Math.log10(i.t)), y: lt.instants.map((i) => i.uzDeck * 1000), color: ORANGE, width: 1.6 }],
+          xLabel: 'idade do concreto — log10(dias)', yLabel: 'uz (mm)', height: 170,
+        }),
+        'Evolução do deslocamento vertical do tabuleiro por fluência e retração.',
+      ),
+    )
+    if (lt.cableChange) {
+      out.push(kv([['Variação da tração permanente dos cabos em t∞', `${n(lt.cableChange[0] * 100, 1)} % a ${n(lt.cableChange[1] * 100, 1)} %`]]))
+    }
+    const st = r.stages?.time
+    if (st && r.stages) {
+      out.push(ctx.h('Durante a execução'))
+      const last = r.stages.stages[r.stages.stages.length - 1]?.creep
+      out.push(
+        kv([
+          ['Duração de cada fase', `${n(st.daysPerStage, 0)} dias`],
+          ['Da última fase à abertura', `${n(st.tOpen, 0)} dias`],
+          ...(last ? ([[`Tabuleiro na abertura (dia ${ni(last.day)})`, `${n(last.uzMax * 1000, 0)} mm`], ['Variação de tração dos estais até a abertura', `${ni(last.dT[0])} a ${ni(last.dT[1])} kN`]] as [string, string][]) : []),
+          ['Tabuleiro da abertura a t∞', `${n(st.final.uzMax * 1000, 0)} mm`],
+          ['Variação de tração dos estais da abertura a t∞', `${ni(st.final.dT[0])} a ${ni(st.final.dT[1])} kN`],
+        ]),
+      )
+      out.push(note('Incrementos de fluência e retração somados fase a fase sobre o estado elástico da análise regressiva; sem retensionamento.'))
+    }
+    out.push(
+      ul([
+        'Todo o concreto é considerado carregado na idade t0 (a história da execução só entra na análise de fases).',
+        'A relaxação dos estais e a realimentação das perdas de protensão não são consideradas.',
+      ]),
+    )
+    return out.join('')
+  },
+}

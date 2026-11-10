@@ -20,6 +20,7 @@ import type { SkylineMatrix } from '../analysis/skyline'
 import { type BridgeSystem, frameTangentLocal } from '../analysis/system'
 import { stationForces, toGlobal, toLocal } from '../analysis/frame'
 import { VEHICLES, type VehicleId, ciaFactor, civ, cnf, trafficLanes } from './nbr7188'
+import { type LoadLine, transverseEnvelope } from './transverse'
 
 export interface MovingOptions {
   vehicle: VehicleId
@@ -45,6 +46,8 @@ interface LaneData {
   candIdx: Int32Array
   candW: Float64Array
   nCand: number
+  /** grelha: linhas longitudinais (longarinas) que recebem a carga — ver loads/transverse.ts */
+  lines?: LoadLine[]
 }
 
 const NF = 18
@@ -198,6 +201,27 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
       done++
       if (done % 8 === 0) opts.onProgress?.((0.8 * done) / totalNodes)
     }
+    // tabuleiro em grelha: LI de força unitária em cada linha longitudinal (longarina)
+    let lines: LoadLine[] | undefined
+    if (lane.lines && lane.lines.length >= 2 && m === lane.nodes.length) {
+      const idx = lane.lines.map((l) => l.nodes.map((id) => sys.nodeIndex.get(id)))
+      if (idx.every((ln) => ln.length === m && ln.every((i) => i !== undefined))) {
+        lines = lane.lines.map((l, li) => {
+          const ln = idx[li] as number[]
+          const same = ln.every((i, k) => i === nodes[k])
+          const R: Float64Array[] = []
+          if (same) R.push(...RF)
+          else {
+            for (const i of ln) {
+              p.fill(0)
+              if (eq[6 * i + 2] >= 0) p[eq[6 * i + 2]] = -1
+              R.push(respond(p))
+            }
+          }
+          return { y: l.y, nodes: ln, RF: R }
+        })
+      }
+    }
     // Pontos de apoio: a carga aplicada exatamente sobre o apoio vai direto p/ ele e a linha de
     // influência nodal vale 0 ali, mas o limite pela esquerda e pela direita não (o cortante
     // junto ao apoio tem um salto unitário). Cada apoio vira dois pontos — limite à esquerda e à
@@ -210,11 +234,30 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
       return Number.isFinite(ref) && flex(k) < 0.02 * ref
     }
     const sup = Array.from({ length: m }, (_, k) => isSupport(k))
+    if (lines) {
+      // na grelha a estaca é de apoio se alguma longarina está apoiada nela
+      for (const l of lines) {
+        const fl = (k: number): number => Math.abs(l.RF[k][offU + l.nodes[k]])
+        for (let k = 0; k < m; k++) {
+          let ref = Infinity
+          if (k > 0 && s[k] - s[k - 1] > 1e-9) ref = Math.min(ref, fl(k - 1))
+          if (k < m - 1 && s[k + 1] - s[k] > 1e-9) ref = Math.min(ref, fl(k + 1))
+          if (Number.isFinite(ref) && fl(k) < 0.02 * ref) sup[k] = true
+        }
+      }
+    }
     if (sup.some(Boolean)) {
       const nodes2: number[] = []
       const s2: number[] = []
       const RF2: Float64Array[] = []
       const RT2: Float64Array[] = []
+      const L2 = (lines ?? []).map(() => ({ nodes: [] as number[], RF: [] as Float64Array[] }))
+      const pushLines = (k: number, a: number, b2: number): void => {
+        lines?.forEach((l, li) => {
+          L2[li].nodes.push(l.nodes[k])
+          L2[li].RF.push(a < 0 ? l.RF[k] : limit(l.RF, k, a, b2))
+        })
+      }
       const limit = (R: Float64Array[], k: number, a: number, b2: number): Float64Array => {
         // extrapola de a (vizinho) e b2 (vizinho do vizinho) até a estaca de k
         if (b2 < 0 || b2 >= m || sup[b2] || Math.abs(s[a] - s[b2]) < 1e-9) return R[a]
@@ -231,13 +274,16 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
         if (left) {
           nodes2.push(nodes[k]); s2.push(s[k])
           RF2.push(limit(RF, k, k - 1, k - 2)); RT2.push(limit(RT, k, k - 1, k - 2))
+          pushLines(k, k - 1, k - 2)
         }
         if (right) {
           nodes2.push(nodes[k]); s2.push(s[k])
           RF2.push(limit(RF, k, k + 1, k + 2)); RT2.push(limit(RT, k, k + 1, k + 2))
+          pushLines(k, k + 1, k + 2)
         }
         if (!left && !right) {
           nodes2.push(nodes[k]); s2.push(s[k]); RF2.push(RF[k]); RT2.push(RT[k])
+          pushLines(k, -1, -1)
         }
       }
       nodes = nodes2
@@ -245,6 +291,7 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
       RF = RF2
       RT = RT2
       m = nodes.length
+      if (lines) lines = lines.map((l, li) => ({ y: l.y, nodes: L2[li].nodes, RF: L2[li].RF }))
     }
     const trib = new Float64Array(m)
     for (let k = 0; k < m; k++) trib[k] = ((k < m - 1 ? s[k + 1] : s[k]) - (k > 0 ? s[k - 1] : s[k])) / 2
@@ -285,7 +332,7 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
     lanes.push({
       id: lane.id, nodes, s, trib, width: lane.width, ecc: lane.maxEccentricity,
       joints: lane.joints ?? [s[0], s[m - 1]],
-      RF, RT, candIdx: Int32Array.from(cand), candW: Float64Array.from(candW), nCand,
+      RF, RT, candIdx: Int32Array.from(cand), candW: Float64Array.from(candW), nCand, lines,
     })
   }
   if (lanes.length === 0) return undefined
@@ -310,6 +357,11 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
       if (arr) arr.push(lane.s[k])
       else st.set(nd, [lane.s[k]])
     })
+    lane.lines?.forEach((l) => l.nodes.forEach((nd, k) => {
+      const arr = st.get(nd)
+      if (arr) arr.push(lane.s[k])
+      else st.set(nd, [lane.s[k]])
+    }))
     sys.frames.forEach((f, e) => {
       const sa = st.get(f.a)
       const sb = st.get(f.b)
@@ -332,7 +384,23 @@ export function solveMovingLoad(sys: BridgeSystem, K: SkylineMatrix, opts: Movin
     const etaT = new Float64Array(m)
     const pLine = q * lane.width
     const halfT = 0.5 * pLine * (lane.width / 4)
+    // grelha: repartição transversal pela regra da alavanca entre as longarinas
+    const grid = lane.lines
+      ? transverseEnvelope(lane.lines, {
+          trib: lane.trib, width: lane.width, ecc: lane.ecc, q, axleLoad, track: veh.track,
+          candIdx: lane.candIdx, candW: lane.candW, nCand: lane.nCand, nAx2,
+        })
+      : null
+    const g4 = new Float64Array(4)
     for (let j = 0; j < nResp; j++) {
+      if (grid) {
+        grid(j, g4)
+        envMax[j] += g4[0]
+        envMin[j] += g4[1]
+        if (g4[2] > vehMax[j]) vehMax[j] = g4[2]
+        if (g4[3] < vehMin[j]) vehMin[j] = g4[3]
+        continue
+      }
       for (let k = 0; k < m; k++) {
         etaF[k] = lane.RF[k][j]
         etaT[k] = lane.RT[k][j]

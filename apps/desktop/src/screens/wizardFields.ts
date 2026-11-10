@@ -29,9 +29,11 @@ const DECK_MATERIAL = [
 ]
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const byProps = (p: any): boolean => !p.deck?.geometry
+const isGrid = (p: any): boolean => p.deckModel === 'grillage'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const byBox = (p: any): boolean => p.deck?.geometry?.kind === 'box'
+const byProps = (p: any): boolean => !p.deck?.geometry && !isGrid(p)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const byBox = (p: any): boolean => p.deck?.geometry?.kind === 'box' && !isGrid(p)
 
 /** `geometry` = oferece definir a seção por um caixão paramétrico (A, I e J calculados) */
 const deckSection = (title = 'Seção do tabuleiro', geometry = false): FieldGroup => ({
@@ -45,6 +47,8 @@ const deckSection = (title = 'Seção do tabuleiro', geometry = false): FieldGro
             kind: 'bool',
             wide: true,
             hint: 'Área, inércias e torção são calculadas das dimensões; outros tipos de seção na aba Seções',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            show: (p: any) => !isGrid(p),
           },
           { key: 'deck.geometry.topWidth', label: 'Largura da laje superior', unit: 'm', show: byBox },
           { key: 'deck.geometry.bottomWidth', label: 'Largura do fundo', unit: 'm', show: byBox },
@@ -80,7 +84,7 @@ const GIRDER: FieldGroup[] = [
         kind: 'bool',
         wide: true,
         hint: 'Cabo resultante parabólico que balanceia a carga permanente; ajuste na aba Protensão',
-        show: (p) => p.deckMaterial === 'concrete',
+        show: (p) => p.deckMaterial === 'concrete' && !isGrid(p),
       },
     ],
   },
@@ -91,6 +95,45 @@ const GIRDER: FieldGroup[] = [
       { key: 'carriageway', label: 'Largura carregável', unit: 'm', hint: 'Pista + acostamentos' },
       { key: 'deckMaterial', label: 'Material', kind: 'select', options: DECK_MATERIAL },
       { key: 'fck', label: 'fck do concreto', unit: 'MPa' },
+    ],
+  },
+  {
+    title: 'Modelo do tabuleiro',
+    fields: [
+      {
+        key: 'deckModel',
+        label: 'Como o tabuleiro entra no modelo',
+        kind: 'select',
+        wide: true,
+        options: [
+          { value: 'spine', label: 'Espinha — uma barra no eixo (caixão, seção única)' },
+          { value: 'grillage', label: 'Grelha — longarinas, laje e transversinas (vigas múltiplas)' },
+        ],
+        hint: 'A grelha dá os esforços de cada longarina e a repartição transversal da carga móvel',
+      },
+      { key: 'grillage.girders', label: 'Nº de longarinas', kind: 'int', show: isGrid },
+      { key: 'grillage.spacing', label: 'Distância entre longarinas', unit: 'm', show: isGrid },
+      { key: 'grillage.depth', label: 'Altura da longarina', unit: 'm', hint: 'Laje incluída', show: isGrid },
+      { key: 'grillage.web', label: 'Largura da alma', unit: 'm', show: isGrid },
+      { key: 'grillage.slab', label: 'Espessura da laje', unit: 'm', show: isGrid },
+      {
+        key: 'grillage.diaphragms',
+        label: 'Transversinas',
+        kind: 'select',
+        options: [
+          { value: 'supports', label: 'Só nos apoios' },
+          { value: 'supports+mid', label: 'Apoios e meio dos vãos' },
+          { value: 'spacing', label: 'A cada distância' },
+        ],
+        show: isGrid,
+      },
+      {
+        key: 'grillage.diaphragmSpacing',
+        label: 'Distância entre transversinas',
+        unit: 'm',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        show: (p: any) => isGrid(p) && p.grillage?.diaphragms === 'spacing',
+      },
     ],
   },
   deckSection('Seção do tabuleiro', true),

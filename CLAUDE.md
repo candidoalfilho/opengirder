@@ -10,7 +10,7 @@ npm test                                 # testes do motor e da interface (vites
 npm run typecheck                        # tsc nos dois pacotes
 npm run build                            # typecheck + vite build
 npm run presets -w @opengirder/engine    # resumo numérico dos modelos de referência
-npm run sweep -w @opengirder/engine      # 27 variações de gabarito — rodar após mexer em form-finding ou geradores
+npm run sweep -w @opengirder/engine      # 30 variações de gabarito — rodar após mexer em form-finding ou geradores
 ```
 
 ## Arquitetura
@@ -47,6 +47,8 @@ Pipeline de `analyzeBridge`: form-finding → carga permanente não linear → m
 - **Montantes curtos monolíticos em arco inferior** atraem momentos enormes do movimento relativo arco–tabuleiro: o gerador os faz pendulares abaixo de 10× a largura.
 - **Ancoragens de harpa em cotas quase iguais** dos dois lados da torre geravam barras de milímetros: cotas a menos de 0,6 m são unificadas.
 - **Lockfile gerado no macOS sem os pacotes opcionais das outras plataformas** (`@esbuild/*`): quebra o `npm ci` no CI. Regenerar o lock numa pasta sem `node_modules`.
+- **Carga móvel em grelha por força + torçor no eixo**: o torçor carrega as longarinas vizinhas do nó, não a que está sob a roda. A grelha usa uma linha de influência por longarina e regra da alavanca (`loads/transverse.ts`).
+- **Arco inferior monolítico com fluência**: o fecho desce centímetros e os montantes rígidos reprovam; o modelo de referência usa caixão com geometria real e montantes vazados largos (pendulares abaixo de 10× a largura).
 - Primeiro estai muito longe da torre (mais de ~2× o espaçamento) descarrega o segundo — é física, não bug.
 
 ## Regras

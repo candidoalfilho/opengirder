@@ -224,8 +224,8 @@ describe('sismo NBR 15421', () => {
     expect(f.Vy[0] / Vx).toBeCloseTo(1, 6)
     expect(f.Mz[0] / ((Vx * L) / 2)).toBeCloseTo(1, 6)
     expect(f.N[0] / Vz).toBeCloseTo(1, 6)
-    // deslocamento do topo: elástico × I (sem dividir por R)
-    expect(E!.u[6 + 0] / ((mass * designSpectrum(p, Tx) * G * 1.25) / ((12 * STEEL.E * SEC.Iz) / L ** 3))).toBeCloseTo(1, 6)
+    // deslocamento do topo: elástico (Cd/R com Cd = R; sem I e sem dividir por R)
+    expect(E!.u[6 + 0] / ((mass * designSpectrum(p, Tx) * G) / ((12 * STEEL.E * SEC.Iz) / L ** 3))).toBeCloseTo(1, 6)
   })
 
   it('massa faltante: com 1 só modo, as outras direções respondem estaticamente a Sa do modo de corte', () => {

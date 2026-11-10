@@ -25,6 +25,10 @@ export interface FrameItem {
   /** altura (ao longo de y local) e largura (z local) desenhadas (m) */
   h: number
   w: number
+  /** deslocamento do desenho ao longo de y local (m) — Section.drawOffset */
+  off: number
+  /** idem ao longo de z local (só nas peças extras de desenho) */
+  offZ?: number
   group: string
   matKind: string
 }
@@ -148,7 +152,15 @@ export function buildIndex(
     if (hiddenSet.has(group) || hiddenIdSet.has(el.id)) continue
     if (el.kind === 'frame') {
       const { h, w } = frameDims(model, el, secById)
-      frames.push({ el, i1, i2, h, w, group, matKind: matById.get(el.mat)?.kind ?? 'steel' })
+      frames.push({ el, i1, i2, h, w, off: secById.get(el.sec)?.drawOffset ?? 0, group, matKind: matById.get(el.mat)?.kind ?? 'steel' })
+      // peça extra só de desenho (laje sobre a nervura, balanço da laje na longarina de borda)
+      const extra = secById.get(el.sec)?.drawExtra
+      if (extra) {
+        frames.push({
+          el, i1, i2, h: extra.depth, w: extra.width, off: extra.offset, offZ: extra.offsetZ ?? 0,
+          group, matKind: matById.get(el.mat)?.kind ?? 'steel',
+        })
+      }
     } else {
       const sag = sagById.get(el.id) ?? 0
       const dx = base[3 * i2] - base[3 * i1]
@@ -260,9 +272,9 @@ export function fillFrameMatrices(mesh: THREE.InstancedMesh, idx: SceneIndex, po
       const ax = frameAxes(p1, p2, f.el.up)
       const { ex, ey, ez } = ax
       _m.set(
-        ex[0] * L, ey[0] * f.h, ez[0] * f.w, (p1[0] + p2[0]) / 2,
-        ex[1] * L, ey[1] * f.h, ez[1] * f.w, (p1[1] + p2[1]) / 2,
-        ex[2] * L, ey[2] * f.h, ez[2] * f.w, (p1[2] + p2[2]) / 2,
+        ex[0] * L, ey[0] * f.h, ez[0] * f.w, (p1[0] + p2[0]) / 2 + ey[0] * f.off + ez[0] * (f.offZ ?? 0),
+        ex[1] * L, ey[1] * f.h, ez[1] * f.w, (p1[1] + p2[1]) / 2 + ey[1] * f.off + ez[1] * (f.offZ ?? 0),
+        ex[2] * L, ey[2] * f.h, ez[2] * f.w, (p1[2] + p2[2]) / 2 + ey[2] * f.off + ez[2] * (f.offZ ?? 0),
         0, 0, 0, 1,
       )
     }

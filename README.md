@@ -22,6 +22,7 @@ O OpenGirder modela e calcula pontes de verdade no seu computador, sem instalar 
 | **Modal** | Iteração por subespaço sobre a rigidez tangente do estado de carga permanente; massas efetivas e classificação do modo |
 | **Flambagem** | Fator de carga crítico e modos de flambagem no estado de carga permanente (torres, arcos, tabuleiros comprimidos) |
 | **Fases construtivas** | Análise regressiva de estaiadas em balanços sucessivos: trações de instalação de cada estai, cotas de montagem e esforços na torre fase a fase |
+| **Efeitos diferidos** | Fluência e retração do concreto pelo Anexo A da NBR 6118 (módulo efetivo ajustado pela idade): flechas no tempo, redistribuição de esforços, variação de tração dos estais, na obra pronta e ao longo das fases |
 
 ### Ações e combinações
 
@@ -50,13 +51,14 @@ O OpenGirder modela e calcula pontes de verdade no seu computador, sem instalar 
 
 - **Editor gráfico — construa a ponte do zero**: modelo em branco, nós, barras e cabos desenhados direto no 3D com captura em malha e em nós, plano de trabalho em elevação, planta ou transversal, coordenadas digitadas, seleção por janela, mover, copiar, espelhar, girar, dividir barras, gerar a linha do tabuleiro e **gerar os estais** entre torre e tabuleiro (leque, semi-leque ou harpa).
 - **Biblioteca** de materiais (concretos C25 a C90, aços estruturais, cordoalhas) e seções prontas; **pistas** de carga móvel automáticas; **diagnóstico** do modelo com correção em um clique.
+- **Tabuleiro em grelha** para pontes de vigas múltiplas: longarinas em seção T, faixas de laje e transversinas, com os esforços de cada longarina e a repartição transversal da carga móvel pelo próprio modelo.
 - **Assistentes paramétricos** para ponte de vigas (contínua ou em pórtico, protendida), em arco (inferior, superior, atirantado, de tabuleiro intermediário), estaiada (1 ou 2 torres, harpa/leque/semi-leque, 1 ou 2 planos, tabuleiro curvo, torre em X, tabuleiros gêmeos) e pênsil.
 - **Seções por geometria**: caixão uni ou multicelular, vigas T, laje, mistas aço-concreto e seções de torre, com propriedades calculadas (inclusive torção de Bredt).
 - **Editor de dados** em tabelas (nós, barras, cabos, seções, materiais, cargas), com desfazer e refazer.
 - **Visualização 3D**: deformada, trações, diagramas com envoltórias, modos de vibração e de flambagem animados, fases construtivas.
 - **Memorial de cálculo** pronto para imprimir em PDF, e exportação em DXF, CSV, JSON e PNG.
 
-Modelos prontos: **Golden Gate**, **Estaiada de São Paulo**, **Ponte Rio Negro**, estaiada de três vãos, arco atirantado metálico, arco de concreto de 290 m, ponte extradorso, passarela estaiada e viaduto protendido em viga caixão.
+Modelos prontos: **Golden Gate**, **Estaiada de São Paulo**, **Ponte Rio Negro**, estaiada de três vãos, arco atirantado metálico, arco de concreto de 290 m, ponte extradorso, passarela estaiada, viaduto de vigas múltiplas em grelha e viaduto protendido em viga caixão.
 
 | | |
 |---|---|
@@ -66,6 +68,10 @@ Modelos prontos: **Golden Gate**, **Estaiada de São Paulo**, **Ponte Rio Negro*
 Uma estaiada construída do zero no editor gráfico — tabuleiro, torre, apoios e 20 estais gerados — e calculada em 0,14 s:
 
 ![Editor gráfico](docs/img/editor.png)
+
+| | |
+|---|---|
+| ![Tabuleiro em grelha](docs/img/grelha.png) | ![Efeitos diferidos](docs/img/diferidos.png) |
 
 ## Rodar
 
@@ -96,7 +102,7 @@ r.combos!.frames[0].elu.Mz          // envoltória de momento no ELU
 r.buckling!.modes[0].factor         // fator de carga crítico de flambagem
 ```
 
-`npm run presets -w @opengirder/engine` imprime o resumo dos modelos de referência; `npm run sweep -w @opengirder/engine` roda 27 variações de gabarito.
+`npm run presets -w @opengirder/engine` imprime o resumo dos modelos de referência; `npm run sweep -w @opengirder/engine` roda 30 variações de gabarito.
 
 ## Estrutura
 
@@ -123,11 +129,13 @@ Cada peça do motor é conferida contra solução fechada, e os modelos de refer
 
 **O que ele ainda não faz** (ver [ROADMAP.md](ROADMAP.md)):
 
-- Fluência e retração ao longo das fases construtivas (as fases são calculadas sem efeitos reológicos).
-- Tabuleiro em grelha ou casca: o tabuleiro é uma "espinha" de barras, adequado à análise global, não à distribuição transversal entre longarinas nem ao detalhamento da laje.
+- Análise progressiva completa no tempo: a fluência e a retração entram na obra pronta e como parcela por fase construtiva somada ao estado elástico, sem retensionamento de estais nem balanços sucessivos de vigas.
+- Grelha em estaiadas e pênseis: o tabuleiro dessas pontes continua em espinha (por isso o 1º modo torcional da Golden Gate depende da rigidez à torção estimada).
+- Casca: o tabuleiro é uma espinha de barras ou, em pontes de vigas múltiplas, uma grelha de longarinas, laje e transversinas. Não há elementos de placa: a flexão local da laje sob a roda e o detalhamento da laje ficam de fora, e pontes estaiadas e pênseis continuam com o tabuleiro em espinha.
 - Não linearidade física, análise no tempo, interação solo-estrutura, fadiga detalhada e ancoragens.
 - As ações variáveis e a carga móvel são linearizadas em torno do estado de carga permanente.
 - A triagem aerodinâmica não substitui ensaio em túnel de vento.
+- Os coeficientes de norma foram conferidos em fontes públicas (tabela e fontes em [docs/normas.md](docs/normas.md)), não no texto oficial da ABNT; as edições mais recentes (NBR 7188:2024, NBR 8681:2025, NBR 15421:2023) ainda não foram incorporadas.
 
 As propriedades de seção dos modelos de obras reais são **estimativas** a partir de dados públicos: os modelos servem para demonstrar e validar o motor, não para reavaliar aquelas obras. Como em qualquer programa de análise estrutural, o resultado é responsabilidade do engenheiro que o usa.
 

@@ -35,6 +35,9 @@ describe('NBR 6118 — materiais', () => {
     expect(c.ecu).toBeCloseTo(0.0026 + 0.035 * 0.2 ** 4, 12)
     expect(c.sigmaCd).toBeCloseTo((0.85 * 0.9 * Math.cbrt(40 / 70) * 70e3) / 1.4, 6)
     expect(fctm(30e3)).toBeCloseTo(2896, 0)
+    // fck > 50 MPa: expressão da NBR 6118:2023 (8.2.5), fct,m = 2,12·ln[1 + 0,1·(fck + 8)]
+    expect(fctm(60e3)).toBeCloseTo(1000 * 2.12 * Math.log(7.8), 6)
+    expect(fctm(50e3)).toBeCloseTo(1000 * 0.3 * Math.pow(50, 2 / 3), 6)
   })
 
   it('armadura mínima de flexão — Tabela 17.3', () => {

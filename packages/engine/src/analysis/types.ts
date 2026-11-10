@@ -141,7 +141,7 @@ export interface CableCheck {
 
 /* ------------------------------------------------------------------ ações e combinações */
 
-export type ActionKind = 'temperature' | 'wind' | 'braking' | 'seismic' | 'prestress' | 'settlement' | 'other'
+export type ActionKind = 'temperature' | 'wind' | 'braking' | 'seismic' | 'prestress' | 'settlement' | 'creep' | 'other'
 
 /**
  * Resultado de um caso de carga linearizado em torno do estado permanente (incrementos).
@@ -387,8 +387,67 @@ export interface BridgeResults {
   cableL0: { id: number; L0: number; A?: number; strands?: number }[]
   /** fases construtivas — análise regressiva (só com `AnalysisOptions.stages`) */
   stages?: StagesResult
+  /** efeitos diferidos (fluência e retração) na obra pronta; o estado final é o caso 'CS' de `cases` */
+  longTerm?: LongTermResult
   warnings: string[]
   timings: Record<string, number>
+}
+
+/* ------------------------------------------------------------------ efeitos diferidos */
+
+/** coeficientes de fluência e retração de uma seção de concreto (NBR 6118, Anexo A) */
+export interface LongTermSection {
+  sec: string
+  mat: string
+  name: string
+  /** espessura fictícia hfic (m) */
+  hfic: number
+  /** true = perímetro estimado pela caixa envolvente (seção sem geometria detalhada) */
+  approx: boolean
+  /** fck (kPa) */
+  fck: number
+  /** φ(t∞, t0) */
+  phi: number
+  /** εcs(t∞, t0), negativa */
+  epsCs: number
+  nFrames: number
+}
+
+/** resumo dos incrementos diferidos num instante (em relação ao estado em t0) */
+export interface LongTermInstant {
+  /** idade do concreto (dias) */
+  t: number
+  /** φ(t, t0) e εcs(t, t0) da seção de referência (a de mais barras) */
+  phi: number
+  epsCs: number
+  /** deslocamento vertical de maior módulo no tabuleiro (m, com sinal) e nó */
+  uzDeck: number
+  uzNode: number
+  /** variação de tração nos cabos [mín, máx] (kN) */
+  dT: [number, number]
+  /** maior encurtamento axial acumulado de torre/pilar: deslocamento vertical do topo (m) */
+  uzTower: number
+}
+
+export interface LongTermResult {
+  params: {
+    humidity: number
+    t0: number
+    tInf: number
+    cement: string
+    slump: string
+    temperature: number
+    chi: number
+  }
+  sections: LongTermSection[]
+  /** evolução no tempo (um passo AAEM de t0 a cada instante); o último é t∞ = caso 'CS' */
+  instants: LongTermInstant[]
+  /** curvas φ(t, t0) e εcs(t, t0) da seção de referência */
+  curve: { t: number[]; phi: number[]; epsCs: number[] }
+  /** id do caso de carga com o estado final completo */
+  caseId: string
+  /** variação relativa da tração permanente dos cabos em t∞ [mín, máx] (fração) */
+  cableChange?: [number, number]
 }
 
 /* ------------------------------------------------------------------ fases construtivas */
@@ -425,6 +484,24 @@ export interface StageResult {
   towers: { topNode: number; ux: number; baseM: number }[]
   /** maior compressão no tabuleiro (kN, ≤ 0) */
   deckNmin: number
+  /** fluência e retração ACUMULADAS desde o início da obra até o fim desta fase (só com
+   *  `daysPerStage`): incrementos em relação ao estado elástico da fase */
+  creep?: StageCreep
+}
+
+export interface StageCreep {
+  /** idade da obra no fim da fase (dias desde a fase 0) */
+  day: number
+  /** deslocamentos acumulados de fluência + retração (6 por nó) */
+  u: number[]
+  /** parcela acumulada nas pontas dos balanços desta fase (m) */
+  tips: { node: number; uz: number }[]
+  /** deslocamento vertical acumulado de maior módulo no tabuleiro montado (m, com sinal) */
+  uzMax: number
+  /** variação acumulada de tração dos estais [mín, máx] (kN) */
+  dT: [number, number]
+  /** deslocamento longitudinal acumulado do topo de cada torre (m) */
+  towersUx: number[]
 }
 
 export interface StagesResult {
@@ -441,6 +518,23 @@ export interface StagesResult {
   warnings: string[]
   /** tempo total (ms) */
   elapsed: number
+  /** passagem do tempo entre as fases (fluência e retração) — só com `daysPerStage` */
+  time?: {
+    daysPerStage: number
+    /** dias entre a última fase e a abertura ao tráfego */
+    tOpen: number
+    /** idade do concreto de cada aduela ao ser carregada (dias) */
+    t0: number
+    /** efeito de fluência + retração da abertura até t∞ na estrutura completa */
+    final: {
+      u: number[]
+      uzMax: number
+      stays: { id: number; dT: number }[]
+      dT: [number, number]
+    }
+    /** por estai: variação acumulada de tração durante a obra e até t∞ (kN) */
+    stays: { id: number; dTbuild: number; dTfinal: number }[]
+  }
 }
 
 export interface AnalysisOptions {
@@ -457,7 +551,7 @@ export interface AnalysisOptions {
   buckling?: { modes: number } | false
   /** fases construtivas de estaiadas por análise regressiva (dezenas de análises não lineares);
    *  `equipment` = carga concentrada na ponta de cada balanço (kN). Padrão: desligado */
-  stages?: boolean | { equipment?: number; temporaryFixity?: boolean }
+  stages?: boolean | { equipment?: number; temporaryFixity?: boolean; daysPerStage?: number; tOpen?: number }
   /** false = pula as extensões (casos adicionais, combinações, verificações…); uso interno */
   extras?: boolean
   /** callback de progresso (só no mesmo thread) */

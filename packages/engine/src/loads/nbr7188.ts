@@ -1,7 +1,9 @@
 /**
  * ABNT NBR 7188 — Carga móvel rodoviária e de pedestres em pontes, viadutos, passarelas
- * e outras estruturas (texto de 2013; o trem-tipo TB-450 e os coeficientes de ponderação
- * das cargas verticais permanecem na revisão de 2024).
+ * e outras estruturas. Valores da edição de 2013, conferidos em fontes públicas
+ * (docs/normas.md). A edição de 2024 mudou o título e suprimiu as garagens (foram para a
+ * NBR 6120); segundo a ABECE, o trem-tipo TB-450 continua sendo a carga padrão. Os demais
+ * coeficientes da edição de 2024 não foram conferidos individualmente.
  *
  * Q = P·CIV·CNF·CIA  e  q = p·CIV·CNF·CIA
  */

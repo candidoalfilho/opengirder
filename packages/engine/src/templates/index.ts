@@ -162,6 +162,26 @@ const VIADUCT: GirderBridgeParams = {
   prestress: { enabled: true },
 }
 
+const PRECAST: GirderBridgeParams = {
+  name: 'Viaduto de vigas pré-moldadas',
+  spans: [30, 30, 30],
+  deckWidth: 13,
+  carriageway: 12.2,
+  deckMaterial: 'concrete',
+  fck: 40,
+  // 5 longarinas de 1,80 m (alma de 30 cm) a cada 2,60 m + laje de 22 cm. A, Iz, Iy e J são o
+  // espelho da seção inteira (usados se o modelo voltar a ser de espinha).
+  deck: {
+    A: 5.23, Iz: 1.554, Iy: 72.34, J: 0.1082, depth: 1.8, extraDead: 35,
+    geometry: { kind: 't-girders', width: 13, slab: 0.22, n: 5, bw: 0.3, depth: 1.8, spacing: 2.6 },
+  },
+  pierHeight: 8,
+  elementLength: 2.5,
+  monolithic: false,
+  deckModel: 'grillage',
+  grillage: { girders: 5, spacing: 2.6, web: 0.3, depth: 1.8, slab: 0.22, diaphragms: 'supports+mid' },
+}
+
 const GENERIC_SUSPENSION: SuspensionParams = {
   name: 'Ponte pênsil',
   mainSpan: 600,
@@ -232,13 +252,17 @@ const CONCRETE_ARCH: ArchParams = {
   arch: { material: 'concrete', fck: 40, A: 11, I: 38, Iout: 160, J: 95, depth: 4.5, width: 11 },
   hangerArea: 0.003,
   hangerFpk: 1770,
-  column: { A: 3, I: 0.75, J: 1.27, width: 1.73 },
+  column: { A: 3.2, I: 1.6, J: 2.4, width: 2.3 },
   approachSpans: [45, 45, 41],
   deckWidth: 13.5,
   carriageway: 11,
   deckMaterial: 'concrete',
   fck: 35,
-  deck: { A: 6, Iz: 2.2, Iy: 70, J: 4, depth: 1.8, extraDead: 40 },
+  deck: {
+    A: 6.8, Iz: 4.0, Iy: 70, J: 6.5, depth: 2.3, extraDead: 40,
+    // caixão unicelular: as propriedades acima são recalculadas da geometria
+    geometry: { kind: 'box', topWidth: 13.5, bottomWidth: 6.5, depth: 2.3, topSlab: 0.26, bottomSlab: 0.22, web: 0.5, cells: 1, cantilever: 3.2, cantileverTip: 0.2 },
+  },
   elementLength: 6,
 }
 
@@ -385,6 +409,15 @@ export const PRESETS: Preset[] = [
       'Passarela metálica de 35 + 70 m com mastro único, carga de multidão de 5 kN/m² (NBR 7188, sem impacto). ' +
       'Confira na aba Modos as frequências na faixa crítica do passo: vertical 1,6–2,4 Hz, lateral 0,8–1,2 Hz.',
     template: { kind: 'cable-stayed', params: FOOTBRIDGE },
+  },
+  {
+    id: 'vigas-pre-moldadas',
+    label: 'Viaduto de vigas múltiplas (grelha)',
+    description:
+      'Três vãos contínuos de 30 m com 5 longarinas a cada 2,60 m, laje de 22 cm e transversinas nos apoios e no meio ' +
+      'dos vãos, modelado em grelha: cada longarina tem os seus esforços e a carga móvel TB-450 é repartida ' +
+      'transversalmente pelo próprio modelo.',
+    template: { kind: 'girder', params: PRECAST },
   },
   {
     id: 'viaduto',

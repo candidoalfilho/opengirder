@@ -12,7 +12,7 @@ import { GROUP_LABEL, MATERIAL_KIND_LABEL, MODE_KIND_LABEL, TYPE_LABEL } from '.
 import { deadAlong, envelopeAlong, keyFigures, lanePaths, matchReference, type LanePath } from '../panels/data'
 import { type Cell, type Col, type ReportContext, badge, eq, esc, kv, n, na, ni, note, p, raw, table, ul } from './html'
 import { BLUE, GREY, INK, ORANGE, lineChartSvg, projectionSvg } from './svg'
-import { secEstabilidade, secFases, secProtensao, secSecoes } from './sectionsExtra'
+import { secDiferidos, secEstabilidade, secFases, secProtensao, secSecoes } from './sectionsExtra'
 
 export interface ReportSection {
   key: string
@@ -190,8 +190,12 @@ const secDados: ReportSection = {
       'Carga móvel, análise modal e demais ações variáveis são <b>linearizadas</b> em torno do estado de carga permanente. Em pontes pênseis muito carregadas isso tende a superestimar flechas (a rigidez cresce com a carga).',
       'Modelo de barras (espinha): efeitos locais em lajes, transversinas, ancoragens e regiões de introdução de carga não são representados, nem a distorção de seções abertas ou treliçadas na torção.',
       r.prestress
-        ? 'Fluência, retração e relaxação entram apenas nas perdas de protensão; a redistribuição de esforços ao longo do tempo não é calculada.'
-        : 'Fluência, retração e relaxação ao longo do tempo não são consideradas neste memorial.',
+        ? r.longTerm
+          ? 'Fluência e retração: perdas de protensão e efeitos na estrutura pelo módulo efetivo ajustado pela idade (um passo de t0 a t∞); a relaxação dos estais não é considerada.'
+          : 'Fluência, retração e relaxação entram apenas nas perdas de protensão; a redistribuição de esforços ao longo do tempo não é calculada.'
+        : r.longTerm
+          ? 'Fluência e retração do concreto pelo módulo efetivo ajustado pela idade (um passo de t0 a t∞); sem história de carregamento nem relaxação dos estais.'
+          : 'Fluência, retração e relaxação ao longo do tempo não são consideradas neste memorial.',
       'Apoios rígidos ou com as molas informadas no modelo; não há interação solo–estrutura.',
     ]
     if (!r.cases?.length) lim.push('Temperatura, vento, frenagem e sismo não foram incluídos nesta análise.')
@@ -626,7 +630,7 @@ const secMovel: ReportSection = {
       ),
     )
 
-    const paths = lanePaths(model).filter((pth) => pth.s.length > 1 && mv.lanes.includes(pth.lane.id))
+    const paths = lanePaths(model).filter((pth) => pth.s.length > 1 && mv.lanes.includes(pth.lane.id.split('#')[0]))
     if (paths.length) {
       out.push(ctx.h('Envoltórias no tabuleiro'))
       for (const path of paths.slice(0, 3)) {
@@ -808,6 +812,7 @@ const KIND_LABEL: Record<string, string> = {
   braking: 'Frenagem / aceleração',
   seismic: 'Sismo',
   prestress: 'Protensão',
+  creep: 'Fluência e retração',
   settlement: 'Recalque',
   other: 'Outro',
 }
@@ -1053,6 +1058,7 @@ export const REPORT_SECTIONS: ReportSection[] = [
   secSecoes,
   secEstabilidade,
   secFases,
+  secDiferidos,
   // [memorial:novas] — seções das demais frentes entram acima deste marcador
   secAvisos,
   anexoCabos,

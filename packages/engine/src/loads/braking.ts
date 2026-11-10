@@ -1,5 +1,6 @@
 /**
- * Frenagem e aceleração — ABNT NBR 7188:2013, item 5.2.1.
+ * Frenagem e aceleração — ABNT NBR 7188:2013, item 5.2.1 (expressão conferida em fontes
+ * públicas — docs/normas.md; não foi possível conferir se a edição de 2024 a alterou).
  *
  *   Hf = 0,25 · B · L · CNF  ≥  135 kN
  *
@@ -27,6 +28,9 @@ export function brakingForce(B: number, L: number, CNF: number): number {
 export function brakingCase(ctx: AnalysisContext): LoadCaseResult | null {
   const { model, sys, lin } = ctx
   if (model.lanes.length === 0) return null
+  // a frenagem é ação de veículos rodoviários (seção 5); passarelas (seção 6) não a têm
+  const vehicle = (ctx.opts.moving !== false ? ctx.opts.moving?.vehicle : undefined) ?? model.meta?.liveLoad
+  if (vehicle === 'Pedestres') return null
   const X = sys.X
   const F = new Float64Array(6 * sys.nNodes)
   const uniform = new Map<number, Vec3>()

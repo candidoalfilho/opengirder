@@ -3,6 +3,7 @@ import type { BridgeModel, BridgeResults, StageResult, StagesResult } from '@ope
 import { useStore } from '../../store'
 import { fmt, fmtAuto, fmtDuration, fmtInt, numToInput, parseNum } from '../../format'
 import { LineChart, type Series } from '../../ui/Chart'
+import { StageCreepBlock } from './LongTermTab'
 import { lanePaths } from '../data'
 
 const KIND_LABEL: Record<StageResult['kind'], string> = {
@@ -33,8 +34,18 @@ function Hypotheses({ st }: { st?: StagesResult }) {
       recalculada (não linear) com os comprimentos de fabricação finais dos estais. As trações na fase em que cada estai
       entra são as forças de instalação; o deslocamento da ponta dos balanços é a cota de montagem em relação ao greide.
       <br />
-      <b>Não inclui</b> fluência, retração nem relaxação, nem retensionamentos; o fechamento é ideal (pontas corrigidas
-      para a posição de projeto).
+      {st?.time ? (
+        <>
+          <b>Fluência e retração</b> entram como incrementos somados fase a fase ({fmt(st.time.daysPerStage, 0)} dias por fase),
+          sem corrigir o estado elástico das fases seguintes. <b>Não inclui</b> relaxação dos estais nem retensionamentos; o
+          fechamento é ideal (pontas corrigidas para a posição de projeto).
+        </>
+      ) : (
+        <>
+          <b>Não inclui</b> fluência, retração nem relaxação, nem retensionamentos; o fechamento é ideal (pontas corrigidas
+          para a posição de projeto).
+        </>
+      )}
       {st?.temporaryFixity && ' O aparelho de apoio do tabuleiro na torre fica travado (engaste provisório) até a última fase.'}
       {st && st.equipment > 0 && ` Carga de equipamento de ${fmtAuto(st.equipment)} kN na ponta de cada balanço.`}
     </div>
@@ -49,6 +60,8 @@ function Launch({ results }: { results: BridgeResults | null }) {
   const [text, setText] = useState(numToInput(options.stageEquipment))
   const equipment = parseNum(text)
   const valid = text.trim() === '' || (Number.isFinite(equipment) && equipment >= 0)
+  const [days, setDays] = useState(numToInput(options.stageDays ?? 7))
+  const nDays = parseNum(days)
   const failed = results && options.stages ? results.warnings.filter((w) => /fases construtivas/i.test(w)) : []
 
   return (
@@ -72,11 +85,24 @@ function Launch({ results }: { results: BridgeResults | null }) {
         />
         <div className="hint">Treliça lançadeira, carro de avanço, formas. Deixe 0 para não considerar.</div>
       </div>
+      <div className="field">
+        <div className="label">
+          Duração de cada fase <span className="unit">dias</span>
+        </div>
+        <input
+          className="input"
+          inputMode="decimal"
+          value={days}
+          placeholder="7"
+          onChange={(e) => setDays(e.target.value)}
+        />
+        <div className="hint">Para a fluência e a retração do concreto entre as fases. 0 = não considerar o tempo.</div>
+      </div>
       <button
         className="btn btn-primary"
         disabled={running || !valid}
         onClick={() => {
-          setOptions({ stages: true, stageEquipment: Number.isFinite(equipment) ? equipment : 0 })
+          setOptions({ stages: true, stageEquipment: Number.isFinite(equipment) ? equipment : 0, stageDays: Number.isFinite(nDays) && nDays >= 0 ? nDays : 7 })
           run()
         }}
       >
@@ -300,6 +326,8 @@ export function StagesTab({ model, results }: { model: BridgeModel; results: Bri
           )}
         </>
       )}
+
+      <StageCreepBlock st={st} />
 
       <div className="panel-title">
         Tração de instalação dos estais

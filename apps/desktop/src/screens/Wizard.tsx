@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   defaultBox,
   generateModel,
+  resolveGrillage,
   sectionProperties,
   validateGeometry,
   validateModel,
   type BridgeModel,
+  type GirderBridgeParams,
   type TemplateParams,
 } from '@opengirder/engine'
 import { useStore, type ViewState } from '../store'
@@ -293,6 +295,16 @@ export function Wizard() {
         const p = { ...(prev.params as Params) }
         if (value) p.twin = { level2: (Number(p.deckLevel) || 12) + 12 }
         else delete p.twin
+        return normalize({ kind: prev.kind, params: p } as TemplateParams)
+      }
+      if (key === 'deckModel') {
+        // grelha: preenche os dados das longarinas (da geometria 't-girders' ou padrões) e
+        // desliga a protensão automática, que só existe no modelo de espinha
+        const p = setPath(prev.params, 'deckModel', value) as Params
+        if (value === 'grillage') {
+          if (!p.grillage) p.grillage = { ...resolveGrillage(p as unknown as GirderBridgeParams), diaphragmSpacing: 10 }
+          if (p.prestress) p.prestress = { ...(p.prestress as object), enabled: false }
+        }
         return normalize({ kind: prev.kind, params: p } as TemplateParams)
       }
       if (key === '__boxGeometry') {

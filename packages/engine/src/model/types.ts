@@ -67,6 +67,16 @@ export interface Section {
   /** largura da seção (m) — só p/ desenho */
   width?: number
   shape?: 'box' | 'girder' | 'truss' | 'tower' | 'rigid' | 'generic'
+  /** fração da força de vento do tabuleiro que esta barra recebe (grelha: bordas 0,5, internas 0);
+   *  padrão 1 */
+  windShare?: number
+  /** largura do tabuleiro inteiro p/ o coeficiente de arrasto, quando `width` é só a da peça */
+  windWidth?: number
+  /** deslocamento vertical só do DESENHO (m): a peça é desenhada acima (+) do eixo do modelo */
+  drawOffset?: number
+  /** segunda peça só de DESENHO (ex.: a laje sobre a nervura): altura × largura (m) e
+   *  deslocamentos ao longo de y local (vertical) e de z local */
+  drawExtra?: { depth: number; width: number; offset: number; offsetZ?: number }
   /** distância do centroide à fibra superior / inferior (m), p/ tensões; padrão depth/2 */
   yTop?: number
   yBot?: number
@@ -158,6 +168,14 @@ export interface Lane {
   maxEccentricity: number
   /** posições de juntas/extremidades (estacas, m) p/ o CIA — padrão: início e fim */
   joints?: number[]
+  /**
+   * Tabuleiro em grelha: linhas longitudinais de nós que recebem a carga (longarinas), cada
+   * uma com a posição transversal `y` (m) em relação ao eixo da pista e um nó por estaca de
+   * `nodes` (mesma quantidade, mesma ordem). Com `lines`, cada roda e cada faixa da carga
+   * distribuída são repartidas entre as duas linhas vizinhas pela regra da alavanca, em vez
+   * de força + torçor no eixo.
+   */
+  lines?: { y: number; nodes: number[] }[]
 }
 
 export type BridgeType = 'girder' | 'cable-stayed' | 'suspension' | 'arch'
@@ -197,6 +215,24 @@ export interface SiteActions {
     R: number
     /** fator de importância */
     I: number
+  }
+  /** efeitos diferidos do concreto — fluência e retração (NBR 6118, Anexo A). Padrão: ligado
+   *  quando há barras de concreto, com os valores de `DEFAULT_LONG_TERM` (timedep/params.ts) */
+  longTerm?: false | {
+    enabled?: boolean
+    /** umidade relativa do ambiente (%) */
+    humidity?: number
+    /** idade do concreto (dias) quando a carga permanente passa a atuar */
+    t0?: number
+    cement?: 'CP I-II' | 'CP III-IV' | 'CP V-ARI'
+    /** abatimento (cm) */
+    slump?: '0-4' | '5-9' | '10-15'
+    /** temperatura média do ambiente (°C) */
+    temperature?: number
+    /** idade final de referência (dias) */
+    tInf?: number
+    /** coeficiente de envelhecimento χ (AAEM) */
+    chi?: number
   }
 }
 

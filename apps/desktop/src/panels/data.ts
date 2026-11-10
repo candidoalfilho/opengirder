@@ -22,7 +22,16 @@ export function lanePaths(model: BridgeModel): LanePath[] {
     const key = e.n1 < e.n2 ? `${e.n1}:${e.n2}` : `${e.n2}:${e.n1}`
     if (!byPair.has(key)) byPair.set(key, { id: e.id, n1: e.n1 })
   }
-  return (model.lanes ?? []).map((lane) => {
+  // grelha: um caminho por longarina (linha de carga) no lugar do eixo da pista; a linha que
+  // coincide com o eixo mantém o id da pista, as outras ganham "#k"
+  const laneList: Lane[] = (model.lanes ?? []).flatMap((lane) => {
+    if (!lane.lines || lane.lines.length < 2) return [lane]
+    return lane.lines.map((ln, k) => {
+      const axis = ln.nodes.length === lane.nodes.length && ln.nodes.every((id, i) => id === lane.nodes[i])
+      return { ...lane, id: axis ? lane.id : `${lane.id}#${k + 1}`, name: `Longarina ${k + 1}${axis ? ' (eixo)' : ''}`, nodes: ln.nodes, lines: undefined }
+    })
+  })
+  return laneList.map((lane) => {
     const ids = lane.nodes.filter((id) => index.has(id))
     const nodeIdx = ids.map((id) => index.get(id)!)
     const s: number[] = []

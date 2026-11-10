@@ -178,3 +178,18 @@ describe('ações e combinações nos modelos de referência', () => {
     })
   }
 })
+
+describe('passarelas — NBR 8681, Tabela 6', () => {
+  it('multidão entra com ψ de passarelas (0,6 / 0,4 / 0,3) e não gera caso de frenagem', () => {
+    const m = generateModel(PRESETS.find((p) => p.id === 'passarela')!.template)
+    const r = analyzeBridge(m, { modal: false })
+    expect(r.moving!.vehicle).toBe('Pedestres')
+    expect(r.cases!.some((c) => c.kind === 'braking')).toBe(false)
+    const by = new Map(r.combos!.list.map((c) => [c.id, c.factors]))
+    // vento principal no ELU: γq·ψ0 = 1,5·0,6
+    expect(by.get('ELU-2')!.Q).toBeCloseTo(0.9, 9)
+    // frequente com a multidão principal: ψ1 = 0,4; quase permanente: ψ2 = 0,3
+    expect(by.get('ELS-F1')!.Q).toBeCloseTo(0.4, 9)
+    expect(by.get('ELS-QP')!.Q).toBeCloseTo(0.3, 9)
+  })
+})

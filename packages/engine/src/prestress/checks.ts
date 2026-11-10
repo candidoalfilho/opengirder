@@ -21,7 +21,8 @@ import type { PrestressSection } from './types'
 /** fctm (kPa) p/ fck em kPa — NBR 6118 8.2.5 */
 export function fctm(fck: number): number {
   const f = fck / 1000
-  return 1000 * (f <= 50 ? 0.3 * Math.pow(f, 2 / 3) : 2.12 * Math.log(1 + 0.11 * f))
+  // fck > 50 MPa: expressão da edição de 2023 (a de 2014 era 2,12·ln(1 + 0,11·fck))
+  return 1000 * (f <= 50 ? 0.3 * Math.pow(f, 2 / 3) : 2.12 * Math.log(1 + 0.1 * (f + 8)))
 }
 
 export interface NMEnv {

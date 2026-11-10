@@ -2363,3 +2363,33 @@ input[type='range'] {
 .dg-note {
   margin-top: 14px;
 }
+
+/* ---------- aba Efeitos diferidos ---------- */
+.lt-tab .panel-title {
+  margin-top: 14px;
+}
+.lt-tab .panel-title:first-child {
+  margin-top: 0;
+}
+.lt-grid2 {
+  grid-template-columns: 1fr 1fr;
+}
+.lt-table {
+  overflow-x: auto;
+  margin: 4px 0 8px;
+}
+.lt-note {
+  margin-top: 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-2);
+}
+.lt-hint {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  line-height: 1.4;
+  margin: 4px 0 8px;
+}
+.lt-actions {
+  margin: 6px 0;
+}

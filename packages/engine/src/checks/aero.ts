@@ -159,6 +159,8 @@ export function runAero(ctx: AnalysisContext): void {
     if (f.group !== 'deck') continue
     const sec = secs.get(elSec.get(f.id) ?? '')
     if (!sec || !(sec.width && sec.width > 0)) continue
+    // tabuleiro em grelha: a triagem de seção única (B, m, r do tabuleiro) não se aplica
+    if (sec.windShare !== undefined) return
     len += f.L0
     mL += f.mass * f.L0
     jL += f.polar * f.L0

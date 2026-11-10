@@ -128,7 +128,7 @@ export function ActionsTab({ model, results }: { model: BridgeModel; results: Br
           <input
             type="checkbox"
             checked={!!wind}
-            onChange={(e) => patch({ wind: e.target.checked ? (defaults.wind || { V0: 35, S1: 1, category: 2, S3: 1.1 }) : false })}
+            onChange={(e) => patch({ wind: e.target.checked ? (defaults.wind || { V0: 35, S1: 1, category: 2, S3: 1.11 }) : false })}
           />
           Vento transversal <span className="dim">NBR 6123</span>
         </label>

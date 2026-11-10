@@ -32,7 +32,7 @@
 
 import type { BridgeModel, Element, LoadCase, NodalLoad, Section } from '../model/types'
 import type { StageResult, StagesResult } from '../analysis/types'
-import { buildSystem } from '../analysis/system'
+import { type BridgeSystem, buildSystem } from '../analysis/system'
 import { type StaticSolution, solveStatic } from '../analysis/static'
 import { elementStages, stagePlan } from './plan'
 
@@ -44,6 +44,21 @@ export interface StageOptions {
   /** trava à flexão os aparelhos de apoio tabuleiro–torre até a última fase (padrão true) */
   temporaryFixity?: boolean
   onProgress?: (fraction: number) => void
+  /** chamado após cada fase resolvida (da última p/ a primeira), com a estrutura parcial no
+   *  estado de equilíbrio da fase — usado por timedep/stagesTime.ts p/ a fluência entre fases */
+  onStage?: (info: StageHookInfo) => void
+}
+
+export interface StageHookInfo {
+  k: number
+  last: number
+  /** modelo parcial da fase e seu sistema, no estado de equilíbrio */
+  sub: BridgeModel
+  sys: BridgeSystem
+  /** fase em que cada elemento é montado */
+  stageOf: Map<number, number>
+  nonlinear: boolean
+  converged: boolean
 }
 
 const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now())
@@ -254,6 +269,7 @@ export function runStages(
         return { topNode: base.nodes[t.top].id, ux: u[6 * t.top], baseM }
       })
       if (r.converged) warm = sol.u
+      opts.onStage?.({ k, last, sub, sys, stageOf, nonlinear, converged: r.converged })
     }
     results[k] = r
     opts.onProgress?.((last - k + 1) / nStages)

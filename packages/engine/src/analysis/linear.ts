@@ -26,6 +26,10 @@ export interface ImposedStrain {
   kz?: number
   /** curvatura livre no plano lateral local (x–z), 1/m; mesmo sinal de My/EIy */
   ky?: number
+  /** curvaturas livres na extremidade 2, p/ variação LINEAR ao longo da barra (fluência sob
+   *  momento variável): `kz`/`ky` passam a ser os valores na extremidade 1. Ausentes = constante */
+  kzEnd?: number
+  kyEnd?: number
 }
 
 export interface CaseLoad {
@@ -136,14 +140,23 @@ export class LinearSolver {
         q[0] = -f.EA * s.eps
         q[6] = f.EA * s.eps
       }
-      if (s.kz) {
-        // ∫ Bᵀ·EI·κ0: momentos −EI·κ0 (nó 1) e +EI·κ0 (nó 2) em rz
-        q[5] = -f.EIz * s.kz
-        q[11] = f.EIz * s.kz
+      if (s.kz || s.kzEnd) {
+        // ∫ Bᵀ·EI·κ0, κ0 linear de κa a κb: momentos −EI·κa (nó 1) e +EI·κb (nó 2) em rz e o
+        // binário de forças ±EI·(κb − κa)/L em y
+        const ka = s.kz ?? 0
+        const kb = s.kzEnd ?? ka
+        q[5] = -f.EIz * ka
+        q[11] = f.EIz * kb
+        q[1] = (f.EIz * (kb - ka)) / f.L0
+        q[7] = -q[1]
       }
-      if (s.ky) {
-        q[4] = f.EIy * s.ky
-        q[10] = -f.EIy * s.ky
+      if (s.ky || s.kyEnd) {
+        const ka = s.ky ?? 0
+        const kb = s.kyEnd ?? ka
+        q[4] = f.EIy * ka
+        q[10] = -f.EIy * kb
+        q[2] = (f.EIy * (kb - ka)) / f.L0
+        q[8] = -q[2]
       }
       addEq(e, q)
     })

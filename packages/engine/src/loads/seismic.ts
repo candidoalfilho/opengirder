@@ -12,7 +12,8 @@
  * estado permanente, massa concentrada) responde com a amplitude Γ·Sa(T)·g/ω²; as respostas
  * modais são combinadas pela CQC com ξ = 5 % (Wilson, Der Kiureghian & Bayo, 1981) e as três
  * direções pela regra 100 % + 30 % + 30 % (o pior dos três arranjos). Os esforços são
- * multiplicados por I/R; os deslocamentos por I (elásticos, isto é, Cd = R).
+ * multiplicados por I/R; os deslocamentos por Cd/R, com Cd = R (deslocamento elástico, sem o
+ * fator I — na norma, δ = Cd·δe/I com δe já calculado com I/R).
  *
  * Massa faltante: a parcela da massa que os modos calculados não mobilizam em cada direção,
  * M·(ι − Σ Γk·φk), entra como resposta ESTÁTICA e soma-se à CQC por raiz da soma dos
@@ -25,8 +26,9 @@
  * Limitações: a NBR 15421 trata de estruturas usuais de edifícios e não traz coeficientes R
  * para pontes — R e I são dados do usuário (padrões em loads/site.ts). O resultado é uma
  * envoltória em valor absoluto (sem sinal e sem concomitância entre esforços). A massa é só
- * a da carga permanente. Os valores da Tabela 3 e os ramos do espectro são os da edição de
- * 2006, mantidos na revisão de 2023.
+ * a da carga permanente. Zonas, Tabela 3 (Ca, Cv) e ramos do espectro são os da edição de 2006,
+ * conferidos em fontes públicas (docs/normas.md). A revisão de 2023 passou a ter seis classes de
+ * terreno (A a F); só os fatores da classe E foram conferidos para ela.
  */
 
 import type { FrameForces, LoadCaseResult, Reaction } from '../analysis/types'
@@ -228,7 +230,8 @@ export function seismicCase(ctx: AnalysisContext, p: SeismicParams): LoadCaseRes
 
   // ---- direções: 100 % + 30 % + 30 %
   const kF = p.I / p.R
-  const kU = p.I
+  // deslocamentos: a norma usa Cd/R sobre a resposta elástica; sem Cd informado vale Cd = R (fator 1)
+  const kU = 1
   const env = new Float64Array(nResp)
   for (let j = 0; j < nResp; j++) {
     const x = dir[0][j]

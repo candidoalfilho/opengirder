@@ -6,6 +6,7 @@ import { SectionsTab, sectionFailures } from './features/SectionsTab'
 import { StabilityTab, stabilityFailures } from './features/StabilityTab'
 import { PrestressTab, prestressVisible } from './features/PrestressTab'
 import { StagesTab } from './features/StagesTab'
+import { LongTermTab, longTermVisible } from './features/LongTermTab'
 import { ActionsTab } from './features/ActionsTab'
 import { CombosTab } from './features/CombosTab'
 import { LanesTab } from './features/LanesTab'
@@ -110,6 +111,12 @@ export const FEATURE_TABS: FeatureTab[] = [
     label: 'Diagnóstico',
     badge: (m) => diagnosticsBadge(m),
     render: (m, r) => <DiagnosticsTab model={m} results={r} />,
+  },
+  {
+    key: 'longterm',
+    label: 'Efeitos diferidos',
+    visible: (m) => longTermVisible(m),
+    render: (m, r) => <LongTermTab model={m} results={r} />,
   },
   // [abas:novas] — uma linha por aba nova, acima deste marcador
 ]

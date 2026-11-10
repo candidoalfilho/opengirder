@@ -34,6 +34,7 @@ const TIMING_LABEL: Record<string, string> = {
   modal: 'Análise modal',
   cargaMovel: 'Carga móvel',
   fases: 'Fases construtivas',
+  efeitosDiferidos: 'Fluência e retração',
   sismo: 'Sismo (análise espectral)',
   flambagem: 'Flambagem',
   aerodinamica: 'Estabilidade aerodinâmica',

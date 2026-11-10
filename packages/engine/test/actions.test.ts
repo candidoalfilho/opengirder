@@ -66,7 +66,7 @@ describe('casos de carga das ações', () => {
     const m = deck(20, 4, 'simple')
     const s = resolveSite(m)
     expect(s.temperature).toEqual({ uniform: 15, gradient: 15, cables: 10 })
-    expect(s.wind).toEqual({ V0: 35, S1: 1, category: 2, S3: 1.1 })
+    expect(s.wind).toEqual({ V0: 35, S1: 1, category: 2, S3: 1.11 })
     expect(s.braking).toBe(true)
     expect(s.seismic).toBe(false)
     m.site = { temperature: false, wind: false, braking: false }
@@ -95,7 +95,7 @@ describe('casos de carga das ações', () => {
     m.site = { temperature: false, braking: false }
     const r = analyzeBridge(m, OPT)
     // z de referência 10 m, classe A (maior dimensão 20 m), categoria II → S2 = 1
-    const Vk = 35 * 1 * 1 * 1.1
+    const Vk = 35 * 1 * 1 * 1.11
     const q = (0.613 * Vk * Vk) / 1000
     const fW = q * (2.5 - (0.3 * 4) / 2.0) * 2.0
     const fWT = (2 / 3) * q * (2.5 - (0.3 * 4) / 3.0) * 3.0

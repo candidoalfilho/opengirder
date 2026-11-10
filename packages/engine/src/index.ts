@@ -14,6 +14,8 @@ export * from './templates/types'
 
 export { validateModel } from './model/validate'
 export { generateModel, defaultTemplate, PRESETS } from './templates'
+export { generateGrillage, resolveGrillage } from './templates/grillage'
+export { leverWeights } from './loads/transverse'
 export { concrete, steel, cableSteel, rigidMaterial, rigidSection } from './templates/builder'
 export { pedestrianComfort, PEDESTRIAN_RANGES } from './checks/pedestrian'
 export { analyzeBridge, applyCableL0 } from './analyze'
@@ -82,3 +84,4 @@ export {
   type VehicleId,
   type VehicleSpec,
 } from './loads/nbr7188'
+export * from './timedep'

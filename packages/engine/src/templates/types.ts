@@ -26,6 +26,27 @@ export interface DeckSectionInput {
   geometry?: SectionGeometry
 }
 
+/** tabuleiro em grelha: longarinas + faixas de laje + transversinas (templates/grillage.ts) */
+export interface GrillageParams {
+  /** nº de longarinas (≥ 2) */
+  girders: number
+  /** distância entre eixos de longarinas (m) */
+  spacing: number
+  /** largura da alma (m) e altura total da longarina, laje incluída (m) */
+  web: number
+  depth: number
+  /** espessura da laje (m) */
+  slab: number
+  /** propriedades explícitas de UMA longarina com a mesa colaborante (m², m⁴) — obrigatório em
+   *  tabuleiro de aço/misto; em concreto, se ausente, saem da seção T (alma + laje tributária) */
+  girder?: { A: number; Iz: number; Iy: number; J: number }
+  /** transversinas: só nos apoios, apoios + meio de cada vão, ou a cada `diaphragmSpacing` */
+  diaphragms: 'supports' | 'supports+mid' | 'spacing'
+  diaphragmSpacing?: number
+  /** nervura da transversina: largura × altura total, laje incluída (m); padrão 0,30 × 0,8·depth */
+  diaphragm?: { width: number; depth: number }
+}
+
 export interface GirderBridgeParams {
   name: string
   /** vãos em sequência (m) */
@@ -44,6 +65,11 @@ export interface GirderBridgeParams {
   elementLength: number
   /** pilares engastados no tabuleiro (pórtico) ou sobre aparelhos de apoio */
   monolithic: boolean
+  /** modelo do tabuleiro: 'spine' (barra única no eixo, padrão) ou 'grillage' (grelha de
+   *  longarinas, faixas de laje e transversinas — distribuição transversal da carga) */
+  deckModel?: 'spine' | 'grillage'
+  /** dados da grelha; se ausente e a seção tiver geometria 't-girders', sai dela */
+  grillage?: GrillageParams
   /** protensão longitudinal do tabuleiro (pós-tração aderente), pré-dimensionada por
    *  balanceamento de cargas — só p/ tabuleiro de concreto */
   prestress?: {

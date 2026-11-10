@@ -68,6 +68,8 @@ export interface UiOptions {
   stages: boolean
   /** carga de equipamento na ponta de cada balanço durante a execução (kN) */
   stageEquipment: number
+  /** duração de cada fase construtiva (dias) p/ a fluência e a retração entre fases; 0 = sem tempo */
+  stageDays: number
 }
 
 export interface AnalysisStatus {
@@ -223,7 +225,7 @@ function toEngineOptions(o: UiOptions): AnalysisOptions {
     nonlinear: o.nonlinear,
     modal: o.modal ? { modes: Math.max(1, Math.round(o.modes)) } : false,
     moving: o.moving ? { vehicle: o.vehicle } : false,
-    stages: o.stages ? { equipment: Math.max(0, o.stageEquipment || 0) } : false,
+    stages: o.stages ? { equipment: Math.max(0, o.stageEquipment || 0), daysPerStage: Math.max(0, o.stageDays ?? 7) } : false,
   }
 }
 
@@ -291,7 +293,7 @@ export const useStore = create<State>((set, get) => {
     wizard: null,
     selection: null,
     view: { ...DEFAULT_VIEW },
-    options: { formFinding: true, sizeCables: true, nonlinear: true, modal: true, modes: 12, moving: true, stages: false, stageEquipment: 0, vehicle: 'TB-450' },
+    options: { formFinding: true, sizeCables: true, nonlinear: true, modal: true, modes: 12, moving: true, stages: false, stageEquipment: 0, stageDays: 7, vehicle: 'TB-450' },
     analysis: IDLE,
     rightTab: 'summary',
     overlay: null,
