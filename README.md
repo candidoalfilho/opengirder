@@ -48,6 +48,8 @@ O OpenGirder modela e calcula pontes de verdade no seu computador, sem instalar 
 
 ### Modelagem e saída
 
+- **Editor gráfico — construa a ponte do zero**: modelo em branco, nós, barras e cabos desenhados direto no 3D com captura em malha e em nós, plano de trabalho em elevação, planta ou transversal, coordenadas digitadas, seleção por janela, mover, copiar, espelhar, girar, dividir barras, gerar a linha do tabuleiro e **gerar os estais** entre torre e tabuleiro (leque, semi-leque ou harpa).
+- **Biblioteca** de materiais (concretos C25 a C90, aços estruturais, cordoalhas) e seções prontas; **pistas** de carga móvel automáticas; **diagnóstico** do modelo com correção em um clique.
 - **Assistentes paramétricos** para ponte de vigas (contínua ou em pórtico, protendida), em arco (inferior, superior, atirantado, de tabuleiro intermediário), estaiada (1 ou 2 torres, harpa/leque/semi-leque, 1 ou 2 planos, tabuleiro curvo, torre em X, tabuleiros gêmeos) e pênsil.
 - **Seções por geometria**: caixão uni ou multicelular, vigas T, laje, mistas aço-concreto e seções de torre, com propriedades calculadas (inclusive torção de Bredt).
 - **Editor de dados** em tabelas (nós, barras, cabos, seções, materiais, cargas), com desfazer e refazer.
@@ -60,6 +62,10 @@ Modelos prontos: **Golden Gate**, **Estaiada de São Paulo**, **Ponte Rio Negro*
 |---|---|
 | ![Estaiada de São Paulo](docs/img/sao-paulo.png) | ![Protensão do viaduto](docs/img/protensao.png) |
 | ![Arco atirantado](docs/img/arco.png) | ![Fases construtivas](docs/img/fases.png) |
+
+Uma estaiada construída do zero no editor gráfico — tabuleiro, torre, apoios e 20 estais gerados — e calculada em 0,14 s:
+
+![Editor gráfico](docs/img/editor.png)
 
 ## Rodar
 

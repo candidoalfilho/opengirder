@@ -1,6 +1,6 @@
 # Validação
 
-Tudo aqui é verificado automaticamente por `npm test` (120 testes do motor em `packages/engine/test` e 14 da interface em `apps/desktop/test`). Os números abaixo são os que os testes conferem.
+Tudo aqui é verificado automaticamente por `npm test` (122 testes do motor em `packages/engine/test` e 43 da interface em `apps/desktop/test`). Os números abaixo são os que os testes conferem.
 
 ## 1. Elementos, contra solução fechada
 
@@ -129,6 +129,8 @@ Fatores críticos de flambagem dos modelos de referência (sobre a carga permane
 `npm run sweep -w @opengirder/engine` roda 27 variações de gabarito (um e dois planos, harpa, leque, vãos desiguais, tabuleiro curvo, torre inclinada, torre em X, aço e concreto, pênsil com várias flechas, vigas com e sem pilares, sete arcos). Vinte e seis convergem com todos os cabos aprovados; a outra — pênsil com vão lateral de 60 m — reprova o cabo principal no trecho íngreme, que é o resultado correto para a área informada.
 
 A interface é exercitada num navegador headless: os nove modelos prontos rodam e todas as abas renderizam sem erro de console.
+
+**Modelo feito à mão.** Uma estaiada montada só com as operações do editor, sem assistente (tabuleiro de 2 × 60 m dividido a cada 10 m, torre de 60 m, 5 estais por lado gerados, pista automática), é analisada em `packages/engine/test/scratch.test.ts` e em `apps/desktop/test`: converge, nenhum estai frouxo, tabuleiro a menos de 30 mm do greide, todos os estais aprovados após o dimensionamento, em leque, semi-leque e harpa. No navegador, a partir do modelo em branco, uma estaiada de 2 × 120 m com torre de 85 m e 20 estais gerados roda em 0,14 s com o mesmo resultado (tabuleiro a 5 mm do greide).
 
 ## Hipóteses a ter em mente
 

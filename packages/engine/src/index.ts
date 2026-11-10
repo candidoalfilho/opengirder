@@ -14,6 +14,7 @@ export * from './templates/types'
 
 export { validateModel } from './model/validate'
 export { generateModel, defaultTemplate, PRESETS } from './templates'
+export { concrete, steel, cableSteel, rigidMaterial, rigidSection } from './templates/builder'
 export { pedestrianComfort, PEDESTRIAN_RANGES } from './checks/pedestrian'
 export { analyzeBridge, applyCableL0 } from './analyze'
 export { frameAxes, cablePolyline } from './analysis/geometry'

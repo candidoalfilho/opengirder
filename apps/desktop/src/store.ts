@@ -10,6 +10,8 @@ import {
   type TemplateParams,
 } from '@opengirder/engine'
 import type { AnalysisMessage, AnalysisRequest } from './workers/analysis.worker'
+import { applyAutoLanes } from './editor/lanes'
+import { EMPTY_SELECTION, type EditDefaults, type EditSelection, type EditState } from './editor/types'
 
 export type Screen = 'start' | 'wizard' | 'workspace'
 export type ViewMode = 'model' | 'deformed' | 'cables' | 'diagram' | 'mode' | 'custom'
@@ -105,7 +107,15 @@ interface State {
   past: BridgeModel[]
   future: BridgeModel[]
   toast: Toast | null
+  /** editor gráfico: ferramenta, plano de trabalho, seleção múltipla e padrões dos elementos novos */
+  edit: EditState
 
+  /** altera o estado do editor gráfico */
+  setEdit: (patch: Partial<EditState>) => void
+  /** troca a seleção múltipla do editor; a seleção simples passa a ser o último item */
+  setEditSel: (sel: EditSelection) => void
+  /** liga/desliga o modo de edição gráfica */
+  toggleEdit: () => void
   /** altera o modelo (dados de entrada): marca como modificado e descarta os resultados */
   updateModel: (fn: (m: BridgeModel) => BridgeModel) => void
   /** desfaz / refaz a última edição do modelo feita por `updateModel` */
@@ -142,6 +152,34 @@ const DEFAULT_VIEW: ViewState = {
   modeIndex: 0,
   showNodes: false,
   hidden: [],
+}
+
+/** padrões dos elementos novos coerentes com o modelo: mantém os atuais se ainda existirem */
+function editDefaults(model: BridgeModel | null, cur?: EditDefaults): EditDefaults {
+  const mats = model?.materials ?? []
+  const secs = model?.sections ?? []
+  const has = (id: string | undefined) => !!id && mats.some((m) => m.id === id)
+  const frameMats = mats.filter((m) => m.kind !== 'cable' && m.kind !== 'rigid')
+  const cableMats = mats.filter((m) => m.kind === 'cable')
+  const secOk = !!cur && secs.some((x) => x.id === cur.frameSec)
+  return {
+    frameMat: has(cur?.frameMat) ? cur!.frameMat : (frameMats[0]?.id ?? mats[0]?.id ?? ''),
+    frameSec: secOk ? cur!.frameSec : (secs.find((x) => x.shape !== 'rigid')?.id ?? secs[0]?.id ?? ''),
+    frameGroup: cur?.frameGroup ?? 'deck',
+    cableMat: has(cur?.cableMat) ? cur!.cableMat : (cableMats[0]?.id ?? mats[0]?.id ?? ''),
+    cableGroup: cur?.cableGroup ?? 'stay',
+    cableA: cur?.cableA && cur.cableA > 0 ? cur.cableA : 0.003,
+    cableStrands: cur?.cableStrands ?? 20,
+  }
+}
+
+const DEFAULT_EDIT: EditState = {
+  active: false,
+  tool: 'select',
+  plane: { kind: 'elevation', offset: 0 },
+  snap: 1,
+  sel: EMPTY_SELECTION,
+  defaults: editDefaults(null),
 }
 
 const IDLE: AnalysisStatus = { running: false, stage: '', fraction: 0, error: null, elapsed: null }
@@ -193,6 +231,15 @@ let worker: Worker | null = null
 let toastKey = 0
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
+/** tira da seleção do editor os ids que não existem mais no modelo */
+function pruneSel(model: BridgeModel, sel: EditSelection): EditSelection {
+  if (sel.nodes.length === 0 && sel.elements.length === 0) return sel
+  const nodes = new Set(model.nodes.map((n) => n.id))
+  const els = new Set(model.elements.map((e) => e.id))
+  const out = { nodes: sel.nodes.filter((id) => nodes.has(id)), elements: sel.elements.filter((id) => els.has(id)) }
+  return out.nodes.length === sel.nodes.length && out.elements.length === sel.elements.length ? sel : out
+}
+
 function stopWorker() {
   if (worker) {
     worker.terminate()
@@ -222,6 +269,8 @@ export const useStore = create<State>((set, get) => {
       overlay: null,
       past: [],
       future: [],
+      // modelo novo abre fora do modo de edição (o modelo em branco religa em seguida)
+      edit: { ...s.edit, active: false, tool: 'select', sel: EMPTY_SELECTION, defaults: editDefaults(model, s.edit.defaults) },
       // carga móvel de projeto do modelo (passarelas: pedestres); sem indicação, volta ao trem-tipo rodoviário
       options: {
         ...s.options,
@@ -249,6 +298,37 @@ export const useStore = create<State>((set, get) => {
     past: [],
     future: [],
     toast: null,
+    edit: DEFAULT_EDIT,
+
+    setEdit: (patch) => set((s) => ({ edit: { ...s.edit, ...patch } })),
+
+    setEditSel: (sel) =>
+      set((s) => {
+        const lastEl = sel.elements[sel.elements.length - 1]
+        const lastNd = sel.nodes[sel.nodes.length - 1]
+        // o último item clicado vira a seleção simples (Inspector, aba Dados)
+        const prevEls = new Set(s.edit.sel.elements)
+        const elIsNew = lastEl !== undefined && !prevEls.has(lastEl)
+        const selection: Selection | null =
+          lastNd !== undefined && !elIsNew
+            ? { kind: 'node', id: lastNd }
+            : lastEl !== undefined
+              ? { kind: 'element', id: lastEl }
+              : lastNd !== undefined
+                ? { kind: 'node', id: lastNd }
+                : null
+        return { edit: { ...s.edit, sel }, selection }
+      }),
+
+    toggleEdit: () =>
+      set((s) => {
+        const active = !s.edit.active
+        return {
+          edit: { ...s.edit, active, tool: 'select', sel: EMPTY_SELECTION, defaults: editDefaults(s.model, s.edit.defaults) },
+          overlay: active ? null : s.overlay,
+          view: active ? { ...s.view, mode: 'model' } : s.view,
+        }
+      }),
 
     updateModel: (fn) => {
       const cur = get().model
@@ -266,6 +346,7 @@ export const useStore = create<State>((set, get) => {
         past: [...s.past, cur].slice(-30),
         future: [],
         view: { ...s.view, mode: 'model' },
+        edit: { ...s.edit, sel: pruneSel(model, s.edit.sel), defaults: editDefaults(model, s.edit.defaults) },
       }))
     },
 
@@ -285,6 +366,7 @@ export const useStore = create<State>((set, get) => {
         overlay: null,
         selection: null,
         view: { ...s.view, mode: 'model' },
+        edit: { ...s.edit, sel: EMPTY_SELECTION, defaults: editDefaults(prev, s.edit.defaults) },
       }))
     },
 
@@ -304,6 +386,7 @@ export const useStore = create<State>((set, get) => {
         overlay: null,
         selection: null,
         view: { ...s.view, mode: 'model' },
+        edit: { ...s.edit, sel: EMPTY_SELECTION, defaults: editDefaults(next, s.edit.defaults) },
       }))
     },
 
@@ -376,8 +459,19 @@ export const useStore = create<State>((set, get) => {
     showMode: (index) => set((s) => ({ view: { ...s.view, mode: 'mode', modeIndex: index } })),
 
     runAnalysis: () => {
-      const { model, options } = get()
+      let { model } = get()
+      const { options } = get()
       if (!model) return
+      // modelo feito à mão sem pista: cria a pista pelo eixo do tabuleiro, senão a carga móvel
+      // (e o dimensionamento dos estais) não roda
+      if (model.lanes.length === 0 && options.moving) {
+        const auto = applyAutoLanes(model)
+        if (typeof auto !== 'string') {
+          model = auto.model
+          set({ model, dirty: true })
+          get().notify('Pista de carga móvel criada automaticamente pelo eixo do tabuleiro (aba Dados → Pistas).')
+        }
+      }
       const errors = safeValidate(model)
       if (errors.length) {
         set({ modelErrors: errors, analysis: { ...IDLE, error: 'O modelo tem erros de validação — veja a aba Resumo.' }, rightTab: 'summary' })

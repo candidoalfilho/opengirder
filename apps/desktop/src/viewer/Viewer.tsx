@@ -3,8 +3,10 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { BridgeModel, BridgeResults } from '@opengirder/engine'
-import type { Overlay, Selection, Theme, ViewState } from '../store'
+import { useStore, type Overlay, type Selection, type Theme, type ViewState } from '../store'
 import { CaptureBridge } from './capture'
+import { EditLayer } from '../editor/EditLayer'
+import { useEditOrigin } from '../editor/origin'
 import { fmt, fmtAuto, MODE_KIND_LABEL } from '../format'
 import {
   buildDiagram,
@@ -41,6 +43,8 @@ export interface ViewerProps {
   showLegend?: boolean
   /** campo de deslocamentos extra (modo 'custom'): flambagem, caso de carga, fase… */
   overlay?: Overlay | null
+  /** permite o editor gráfico nesta vista (só a área de trabalho; não a prévia do assistente) */
+  editable?: boolean
 }
 
 interface Anim {
@@ -64,7 +68,14 @@ export function Viewer(props: ViewerProps) {
   const overlay = view.mode === 'custom' ? (props.overlay ?? null) : null
   const hideIds = overlay?.hideElements
 
-  const idx = useMemo(() => buildIndex(model, results, view.hidden, hideIds), [model, results, view.hidden, hideIds])
+  const fixed = useEditOrigin(model, !!props.editable, fitKey)
+  const editing = !!fixed && view.mode === 'model'
+  const editSel = useStore((s) => s.edit.sel)
+  const selectedIds = useMemo(() => new Set(editSel.elements), [editSel])
+  const idx = useMemo(
+    () => buildIndex(model, results, view.hidden, hideIds, fixed),
+    [model, results, view.hidden, hideIds, fixed],
+  )
 
   const deform = useMemo(() => {
     const u = overlay ? (overlay.animate ? null : overlay.u) : view.mode === 'deformed' ? results?.deadLoad.u : null
@@ -103,10 +114,11 @@ export function Viewer(props: ViewerProps) {
         gl={{ logarithmicDepthBuffer: true, antialias: true, alpha: true }}
         dpr={[1, 2]}
         frameloop={anim ? 'always' : 'demand'}
-        onPointerMissed={() => onSelect?.(null)}
+        onPointerMissed={() => !editing && onSelect?.(null)}
       >
         <CameraRig idx={idx} fitKey={fitKey} cameraCmd={cameraCmd} />
         <CaptureBridge />
+        {editing && <EditLayer idx={idx} pal={pal} />}
         <ambientLight intensity={1.15} />
         <hemisphereLight args={['#ffffff', '#3a3226', 0.7]} />
         <directionalLight position={[-0.5 * idx.diag, -0.9 * idx.diag, 1.1 * idx.diag]} intensity={1.9} />
@@ -119,9 +131,11 @@ export function Viewer(props: ViewerProps) {
           cscale={cscale}
           diagram={diagram}
           pal={pal}
-          selection={selection}
-          onSelect={onSelect}
-          showNodes={view.showNodes}
+          selection={editing ? null : selection}
+          onSelect={editing ? undefined : onSelect}
+          showNodes={view.showNodes || editing}
+          nodeScale={editing && idx.nNodes <= 150 ? 1.4 : 1}
+          selectedIds={editing ? selectedIds : undefined}
           dimFrames={view.mode === 'cables'}
           ghost={view.mode === 'deformed' || view.mode === 'mode' || view.mode === 'custom'}
         />
@@ -190,16 +204,41 @@ function CameraRig({
     const margin = 1.14
     const dist =
       Math.max((halfW * margin) / Math.tan(fovH / 2), (halfH * margin) / Math.tan(fovV / 2), diag * 0.02) + depth
-    camera.position.copy(dir.multiplyScalar(dist))
+    const [bx, by, bz] = idxRef.current.boxCenter
+    camera.position.copy(dir.multiplyScalar(dist)).add(new THREE.Vector3(bx, by, bz))
     camera.near = Math.max(0.05, diag / 5000)
     camera.far = diag * 60
     camera.updateProjectionMatrix()
     if (controls.current) {
-      controls.current.target.set(0, 0, 0)
+      controls.current.target.set(bx, by, bz)
       controls.current.update()
     }
     invalidate()
   }
+
+  // a origem da cena mudou (modelo editado, modo de edição ligado/desligado): leva a câmera
+  // junto, para a vista não saltar
+  const prevCenter = useRef(idx.center)
+  useLayoutEffect(() => {
+    const p = prevCenter.current
+    const c = idx.center
+    prevCenter.current = c
+    const dx = p[0] - c[0]
+    const dy = p[1] - c[1]
+    const dz = p[2] - c[2]
+    if (dx === 0 && dy === 0 && dz === 0) return
+    camera.position.x += dx
+    camera.position.y += dy
+    camera.position.z += dz
+    if (controls.current) {
+      controls.current.target.x += dx
+      controls.current.target.y += dy
+      controls.current.target.z += dz
+      controls.current.update()
+    }
+    invalidate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx.center])
 
   useEffect(() => {
     fit('iso')
@@ -271,6 +310,10 @@ interface SceneProps {
   selection: Selection | null
   onSelect?: (s: Selection | null) => void
   showNodes: boolean
+  /** multiplicador do tamanho dos nós (maiores no modo de edição) */
+  nodeScale?: number
+  /** elementos da seleção múltipla do editor */
+  selectedIds?: ReadonlySet<number>
   dimFrames: boolean
   ghost: boolean
 }
@@ -294,7 +337,7 @@ function BridgeScene(p: SceneProps) {
   }, [idx])
   useEffect(() => () => lineGeo.dispose(), [lineGeo])
 
-  const nodeR = idx.diag * 0.0026
+  const nodeR = idx.diag * 0.0026 * (p.nodeScale ?? 1)
   const supportR = Math.min(Math.max(idx.diag * 0.008, 0.6), 14)
 
   const supportGeo = useMemo(() => {
@@ -341,12 +384,12 @@ function BridgeScene(p: SceneProps) {
   }, [idx, pos, anim, lineGeo, showNodes])
 
   useLayoutEffect(() => {
-    if (frameRef.current) frameColors(frameRef.current, idx, pal, dimFrames, selection)
+    if (frameRef.current) frameColors(frameRef.current, idx, pal, dimFrames, selection, p.selectedIds)
     const lc = lineGeo.getAttribute('color') as THREE.BufferAttribute
-    cableColors(idx, pal, cscale, selection, lc.array as Float32Array, tubeRef.current)
+    cableColors(idx, pal, cscale, selection, lc.array as Float32Array, tubeRef.current, p.selectedIds)
     lc.needsUpdate = true
     invalidate()
-  }, [idx, pal, cscale, selection, dimFrames, lineGeo, invalidate])
+  }, [idx, pal, cscale, selection, dimFrames, lineGeo, invalidate, p.selectedIds])
 
   useFrame(({ clock }) => {
     if (!anim) return

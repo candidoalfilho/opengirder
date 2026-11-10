@@ -2,6 +2,12 @@
 
 ## Feito
 
+### v0.3
+
+- Editor gráfico: modelo em branco, desenho de nós, barras e cabos no 3D, seleção múltipla, mover, propriedades da seleção
+- Operações de modelagem: linha de barras, geração de estais e pendurais, copiar, espelhar, girar, dividir, unir nós
+- Pistas de carga móvel automáticas, biblioteca de materiais e seções, diagnóstico do modelo
+
 ### v0.2
 
 - Casos de carga linearizados: temperatura, vento NBR 6123, frenagem NBR 7188, sismo NBR 15421
@@ -32,7 +38,7 @@
 4. **Verificações completas** — fadiga, fissuração, efeitos locais de 2ª ordem em pilares, flambagem local e lateral do aço (NBR 8800, NBR 16694)
 5. **Protensão por tramos** — vários cabos por seção, emendas, protensão externa e de estais extradorso
 6. **Infraestrutura** — aparelhos de apoio, encontros, fundações com molas de solo
-7. **Editor gráfico** — criar e mover nós e barras direto no 3D; liberações de extremidade
+7. **Editor gráfico, 2ª etapa** — vista ortográfica, liberações de extremidade (rótulas), cargas desenhadas no 3D, importação de DXF
 8. **Ferrovias** — trens-tipo da NBR 7189
-9. **Exportação IFC** e importação de DXF
+9. **Exportação IFC**
 10. **Inspeção e avaliação de pontes existentes** — NBR 9452, capacidade de carga de pontes antigas (TB-36, TB-45)

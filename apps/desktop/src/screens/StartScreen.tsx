@@ -2,6 +2,8 @@ import { defaultTemplate, PRESETS, type Preset, type TemplateKind } from '@openg
 import { useStore } from '../store'
 import { openModel } from '../io/fileio'
 import { BridgeGlyph, IconMoon, IconOpen, IconPlus, IconSun, LogoMark } from '../ui/icons'
+import { blankModel } from '../editor/blank'
+import { startBlank } from '../editor/session'
 
 const NEW_BUTTONS: { kind: TemplateKind; label: string }[] = [
   { kind: 'girder', label: 'Nova ponte de vigas' },
@@ -96,6 +98,10 @@ export function StartScreen() {
               {b.label}
             </button>
           ))}
+          <button className="btn btn-lg" onClick={() => startBlank(blankModel())} title="Desenhe a ponte do zero no editor gráfico">
+            <IconPlus size={14} />
+            Modelo em branco
+          </button>
           <button className="btn btn-lg" onClick={onOpen}>
             <IconOpen size={14} />
             Abrir arquivo

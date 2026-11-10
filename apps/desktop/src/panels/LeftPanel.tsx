@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useStore } from '../store'
 import { fmt, fmtAuto, fmtInt, GROUP_LABEL, MATERIAL_KIND_LABEL, TYPE_LABEL } from '../format'
 import { groupColor, PALETTES } from '../viewer/scene'
+import { ModelIdentity } from '../editor/ModelIdentity'
 
 export function LeftPanel() {
   const model = useStore((s) => s.model)
@@ -46,6 +47,7 @@ export function LeftPanel() {
       <div style={{ marginBottom: 10 }}>
         <span className="chip accent">{TYPE_LABEL[model.type] ?? model.type}</span>
       </div>
+      <ModelIdentity />
       <dl className="kv">
         <dt>Nós</dt>
         <dd>{fmtInt(model.nodes.length)}</dd>

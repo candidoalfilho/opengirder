@@ -1943,3 +1943,423 @@ input[type='range'] {
   border: 0;
   background: #e9e6dd;
 }
+
+/* ================================================================= editor gráfico (edt-) */
+.edt-bar {
+  position: absolute;
+  top: 52px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  pointer-events: none;
+  z-index: 3;
+}
+.edt-bar > * {
+  pointer-events: auto;
+}
+.edt-bar .seg {
+  align-items: center;
+}
+.edt-bar .seg button kbd {
+  font-family: var(--mono);
+  font-size: 9px;
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-faint);
+  line-height: 14px;
+}
+.edt-bar .seg button.active kbd {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--accent);
+}
+.edt-num {
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 11.5px;
+  font-family: var(--mono);
+  outline: none;
+  text-align: right;
+  user-select: text;
+}
+.edt-num:focus {
+  border-color: var(--accent);
+}
+.edt-num.edt-coord {
+  width: 190px;
+  text-align: left;
+}
+.edt-eq,
+.edt-unit {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-dim);
+  padding: 0 5px 0 4px;
+  white-space: nowrap;
+}
+.edt-unit {
+  padding: 0 8px 0 4px;
+  color: var(--text-faint);
+}
+.edt-bar .seg .select {
+  max-width: 190px;
+}
+.edt-hint {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--bg-1) 82%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+.edt-toggle {
+  margin-left: auto;
+}
+.edt-toggle button.active {
+  background: var(--accent);
+  color: #1a0f08;
+}
+
+/* rótulo junto ao cursor e janela de seleção (criados pelo EditLayer sobre o canvas) */
+.edt-cursor {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  white-space: pre;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text);
+  background: color-mix(in srgb, var(--bg-1) 90%, transparent);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 3px 7px;
+}
+.edt-box {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.edt-box.crossing {
+  border-style: dashed;
+}
+
+/* menu de operações */
+.popover.edt-ops {
+  left: 0;
+  right: auto;
+  width: 340px;
+  max-height: min(70vh, 620px);
+  overflow: auto;
+}
+.edt-ops-group {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 10px 0 4px;
+}
+.edt-op {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.edt-op:hover:not(:disabled) {
+  background: var(--bg-2);
+}
+.edt-op:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+.edt-op small {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  line-height: 1.3;
+}
+.edt-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+.edt-form .wide {
+  grid-column: 1 / -1;
+}
+.edt-ops-actions {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+}
+
+/* painel de propriedades da seleção */
+.edt-panel {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  max-height: 56%;
+  overflow: auto;
+  flex: none;
+}
+.edt-grid3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.edt-sub {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 12px 0 6px;
+}
+.edt-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.edt-presets .btn {
+  height: 26px;
+  padding: 0 9px;
+  font-size: 11.5px;
+}
+.edt-presets .btn.edt-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.edt-dofs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin-top: 6px;
+}
+.edt-dofs .check {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  gap: 5px;
+}
+.edt-details {
+  margin-top: 8px;
+}
+.edt-details summary {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+.edt-move {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+.edt-move .btn {
+  height: 28px;
+}
+.edt-ro {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.edt-panel-foot {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+}
+.edt-identity {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* ---- pistas (ln-), biblioteca (lib-) e diagnóstico (dg-) */
+.ln-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+.ln-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px 4px;
+  margin-bottom: 10px;
+  background: var(--bg-2);
+}
+.ln-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ln-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+.ln-remove:hover {
+  color: var(--err);
+}
+.ln-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 10px;
+  margin-top: 8px;
+}
+.ln-stale {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+.ln-note {
+  margin-top: 14px;
+}
+
+.lib-subs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.lib-subs button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--sans);
+  font-size: 12px;
+  height: 26px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.lib-subs button:hover {
+  color: var(--text);
+  background: var(--bg-2);
+}
+.lib-subs button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.lib-group {
+  margin-bottom: 14px;
+}
+.lib-group-title {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+.lib-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.lib-row:last-child {
+  border-bottom: none;
+}
+.lib-info {
+  flex: 1;
+  min-width: 0;
+}
+.lib-label {
+  font-size: 12.5px;
+}
+.lib-detail {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+  margin-top: 1px;
+}
+.lib-row .btn {
+  flex: none;
+}
+.lib-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+  margin: 8px 0 10px;
+}
+.lib-props {
+  margin: 4px 0 12px;
+}
+.lib-note {
+  margin-top: 12px;
+}
+
+.dg-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dg-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--bg-2);
+}
+.dg-item.erro {
+  border-left-color: var(--err);
+}
+.dg-item.aviso {
+  border-left-color: var(--warn);
+}
+.dg-item .chip {
+  flex: none;
+  margin-top: 1px;
+}
+.dg-body {
+  flex: 1;
+  min-width: 0;
+}
+.dg-text {
+  font-size: 12px;
+  line-height: 1.5;
+  user-select: text;
+}
+.dg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+.dg-note {
+  margin-top: 14px;
+}

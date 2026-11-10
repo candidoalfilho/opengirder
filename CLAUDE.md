@@ -26,6 +26,7 @@ Pipeline de `analyzeBridge`: form-finding → carga permanente não linear → m
 - **Caso de carga novo** (temperatura, vento, protensão…): montar um `CaseLoad` e resolver com `ctx.lin.solve()` (`analysis/linear.ts`) — incrementos linearizados sobre a tangente do estado permanente. Empurrar um `LoadCaseResult` em `ctx.cases` no marcador `[ext:casos]` de `analyze.ts`.
 - **Pós-processamento novo** (verificação, estabilidade, fases): função `runX(ctx)` chamada no marcador `[ext:verificacoes]`, escrevendo um campo opcional novo em `BridgeResults`. Envolver em `guard('Nome', () => …)` para uma falha virar aviso, não erro.
 - **Aba nova no painel direito**: componente em `apps/desktop/src/panels/features/` + uma entrada em `panels/registry.tsx`.
+- **Operação de modelagem nova** (editor gráfico): função pura em `apps/desktop/src/editor/ops.ts` + uma entrada em `EDIT_ACTIONS` (`editor/actions.ts`); o menu Operações e o formulário saem do registro. O motor só exige de um modelo feito à mão o grupo de cada elemento (tabuleiro, torre, estai…) e uma pista (criada sozinha ao analisar).
 - **Editar dados de entrada pela interface**: `useStore.getState().updateModel(fn)` (descarta resultados). **Mostrar um campo de deslocamentos no 3D**: `showOverlay({ label, u, animate, hideElements })`.
 
 ## Convenções

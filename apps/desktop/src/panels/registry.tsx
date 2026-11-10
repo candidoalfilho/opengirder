@@ -8,6 +8,9 @@ import { PrestressTab, prestressVisible } from './features/PrestressTab'
 import { StagesTab } from './features/StagesTab'
 import { ActionsTab } from './features/ActionsTab'
 import { CombosTab } from './features/CombosTab'
+import { LanesTab } from './features/LanesTab'
+import { LibraryTab } from './features/LibraryTab'
+import { DiagnosticsTab, diagnosticsBadge } from './features/DiagnosticsTab'
 
 /**
  * Abas do painel direito. Para acrescentar uma aba: criar o componente em
@@ -95,5 +98,18 @@ export const FEATURE_TABS: FeatureTab[] = [
     render: (m, r) => <SectionsTab model={m} results={r} />,
   },
   { key: 'data', label: 'Dados', flush: true, render: (m) => <DataTab model={m} /> },
+  {
+    key: 'lanes',
+    label: 'Pistas',
+    badge: (m) => (m.lanes.length ? { text: String(m.lanes.length) } : m.elements.length ? { text: '0', err: true } : undefined),
+    render: (m, r) => <LanesTab model={m} results={r} />,
+  },
+  { key: 'library', label: 'Biblioteca', render: (m, r) => <LibraryTab model={m} results={r} /> },
+  {
+    key: 'diagnostics',
+    label: 'Diagnóstico',
+    badge: (m) => diagnosticsBadge(m),
+    render: (m, r) => <DiagnosticsTab model={m} results={r} />,
+  },
   // [abas:novas] — uma linha por aba nova, acima deste marcador
 ]

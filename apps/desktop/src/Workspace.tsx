@@ -8,6 +8,8 @@ import { Viewer, type CameraPreset } from './viewer/Viewer'
 import { LeftPanel } from './panels/LeftPanel'
 import { RightPanel } from './panels/RightPanel'
 import { TopBarExtras } from './panels/features/TopBarExtras'
+import { EditToggle, EditToolbar } from './editor/EditToolbar'
+import { followView } from './editor/session'
 
 const TEMPLATE_KINDS = ['girder', 'cable-stayed', 'suspension', 'arch']
 
@@ -339,6 +341,7 @@ function ViewToolbar() {
         </div>
       )}
 
+      <EditToggle />
     </div>
   )
 }
@@ -418,6 +421,12 @@ export function Workspace() {
   const cancelAnalysis = useStore((s) => s.cancelAnalysis)
   const [cam, setCam] = useState<{ preset: CameraPreset; n: number }>({ preset: 'iso', n: 0 })
 
+  // modelo em branco aberto já no modo de edição: começa em elevação
+  useEffect(() => {
+    const st = useStore.getState()
+    if (st.edit.active && st.model && st.model.nodes.length === 0) setCam((c) => ({ preset: 'elev', n: c.n + 1 }))
+  }, [fitKey])
+
   if (!model) return null
 
   return (
@@ -436,9 +445,16 @@ export function Workspace() {
             theme={theme}
             cameraCmd={cam}
             overlay={overlay}
+            editable
           />
           <ViewToolbar />
-          <CameraBar onCamera={(preset) => setCam((c) => ({ preset, n: c.n + 1 }))} />
+          <EditToolbar />
+          <CameraBar
+            onCamera={(preset) => {
+              setCam((c) => ({ preset, n: c.n + 1 }))
+              followView(preset)
+            }}
+          />
           {analysis.running && (
             <div className="view-overlay">
               <div className="progress-card">

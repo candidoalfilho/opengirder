@@ -53,6 +53,8 @@ export interface SceneIndex {
   /** posições centradas, 3 por nó (ordem de model.nodes) */
   base: Float64Array
   center: Vec3
+  /** centro da caixa envolvente em coordenadas de cena (zero, salvo com origem fixa na edição) */
+  boxCenter: Vec3
   /** dimensões da caixa envolvente e diagonal */
   size: Vec3
   diag: number
@@ -85,6 +87,8 @@ export function buildIndex(
   results: BridgeResults | null,
   hidden: string[],
   hiddenIds?: number[],
+  /** modo de edição: origem fixa (o modelo não "anda" na tela ao crescer) e caixa mínima de trabalho */
+  fixed?: { origin: Vec3; box?: [Vec3, Vec3] },
 ): SceneIndex {
   const n = model.nodes.length
   const nodeIndex = new Map<number, number>()
@@ -99,7 +103,19 @@ export function buildIndex(
     min = [0, 0, 0]
     max = [1, 1, 1]
   }
-  const center: Vec3 = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2]
+  if (fixed?.box) {
+    const [b0, b1] = fixed.box
+    if (n === 0) {
+      min = [...b0]
+      max = [...b1]
+    } else {
+      min = [Math.min(min[0], b0[0]), Math.min(min[1], b0[1]), Math.min(min[2], b0[2])]
+      max = [Math.max(max[0], b1[0]), Math.max(max[1], b1[1]), Math.max(max[2], b1[2])]
+    }
+  }
+  const mid: Vec3 = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2]
+  const center: Vec3 = fixed ? fixed.origin : mid
+  const boxCenter: Vec3 = [mid[0] - center[0], mid[1] - center[1], mid[2] - center[2]]
   const size: Vec3 = [max[0] - min[0], max[1] - min[1], max[2] - min[2]]
   const diag = Math.max(1, Math.hypot(size[0], size[1], size[2]))
   const base = new Float64Array(3 * n)
@@ -180,6 +196,7 @@ export function buildIndex(
     nNodes: n,
     base,
     center,
+    boxCenter,
     size,
     diag,
     zMin: min[2] - center[2],
@@ -464,9 +481,11 @@ export function frameColors(
   pal: Palette,
   dimmed: boolean,
   selection: Selection | null,
+  /** seleção múltipla do editor (ids de elementos) */
+  multi?: ReadonlySet<number>,
 ): void {
   idx.frames.forEach((f, k) => {
-    if (selection?.kind === 'element' && selection.id === f.el.id) _c.set(pal.selection)
+    if ((selection?.kind === 'element' && selection.id === f.el.id) || multi?.has(f.el.id)) _c.set(pal.selection)
     else if (dimmed) _c.set(pal.dim)
     else _c.set(groupColor(pal, f.group, f.matKind))
     mesh.setColorAt(k, _c)
@@ -481,9 +500,11 @@ export function cableColors(
   selection: Selection | null,
   lineColor: Float32Array,
   tubes: THREE.InstancedMesh | null,
+  /** seleção múltipla do editor (ids de elementos) */
+  multi?: ReadonlySet<number>,
 ): void {
   idx.cables.forEach((c, k) => {
-    if (selection?.kind === 'element' && selection.id === c.el.id) _c.set(pal.selection)
+    if ((selection?.kind === 'element' && selection.id === c.el.id) || multi?.has(c.el.id)) _c.set(pal.selection)
     else if (scale) {
       const v = scale.values[k]
       if (Number.isFinite(v)) rampColor((v - scale.min) / (scale.max - scale.min), _c)

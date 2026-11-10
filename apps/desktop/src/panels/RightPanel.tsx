@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { Inspector } from './Inspector'
+import { EditPanel } from '../editor/EditPanel'
 import { FEATURE_TABS } from './registry'
 
 /** grupos do painel direito (1ª linha) e a que grupo pertence cada aba do registro */
@@ -38,6 +39,7 @@ export function RightPanel() {
   const tab = useStore((s) => s.rightTab)
   const setTab = useStore((s) => s.setRightTab)
   const selection = useStore((s) => s.selection)
+  const editing = useStore((s) => s.edit.active && s.view.mode === 'model')
   const [width, setWidth] = useState(initialWidth)
   const [dragging, setDragging] = useState(false)
   const start = useRef<{ x: number; w: number } | null>(null)
@@ -98,7 +100,7 @@ export function RightPanel() {
           e.preventDefault()
         }}
       />
-      {selection && <Inspector selection={selection} />}
+      {editing ? <EditPanel /> : selection && <Inspector selection={selection} />}
       <div className="tab-groups">
         {groups.map((g) => {
           const err = tabs.some((t) => groupOf(t.key) === g.key && t.badge?.(model, results)?.err)

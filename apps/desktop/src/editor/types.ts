@@ -61,6 +61,8 @@ export interface EditParam {
   kind: 'number' | 'int' | 'select' | 'bool' | 'text'
   default: number | string | boolean
   options?: { value: string; label: string }[]
+  /** opções que dependem do modelo (materiais, seções); quando presente, vale no lugar de `options` */
+  optionsFor?: (model: BridgeModel) => { value: string; label: string }[]
   hint?: string
 }
 

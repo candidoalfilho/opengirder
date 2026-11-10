@@ -1,7 +1,7 @@
 {
   "name": "opengirder",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "OpenGirder — análise e projeto de pontes (vigas, arcos, estaiadas e pênseis) com normas ABNT. 100% gratuito e open source.",
   "license": "MIT",
   "workspaces": [
