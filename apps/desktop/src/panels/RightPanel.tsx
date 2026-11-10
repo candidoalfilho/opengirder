@@ -16,7 +16,7 @@ const TAB_GROUP: Record<string, string> = {
   actions: 'actions', combos: 'actions',
   sections: 'checks', prestress: 'checks', stability: 'checks',
   stages: 'construction',
-  data: 'data',
+  data: 'data', lanes: 'data', library: 'data', diagnostics: 'data',
 }
 
 const MIN_W = 340
