@@ -16,7 +16,7 @@ const TAB_GROUP: Record<string, string> = {
   summary: 'analysis', cables: 'analysis', modes: 'analysis', moving: 'analysis', reactions: 'analysis',
   actions: 'actions', combos: 'actions',
   sections: 'checks', prestress: 'checks', stability: 'checks',
-  stages: 'construction',
+  stages: 'construction', longterm: 'construction',
   data: 'data', lanes: 'data', library: 'data', diagnostics: 'data',
 }
 
